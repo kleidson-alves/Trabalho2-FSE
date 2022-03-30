@@ -10,7 +10,7 @@ void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
     int clienteSocket;
     struct sockaddr_in servidorAddr;
 
-    char buffer[16];
+    char buffer[300];
     unsigned int tamanhoMensagem;
 
     int bytesRecebidos;

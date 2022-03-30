@@ -52,6 +52,8 @@ int parse(char* filename) {
 
     json_data.ip_servidor_central = cJSON_GetObjectItem(json, "ip_servidor_central")->valuestring;
     json_data.porta_servidor_central = cJSON_GetObjectItem(json, "porta_servidor_central")->valueint;
+    json_data.ip_servidor_distribuido = cJSON_GetObjectItem(json, "ip_servidor_distribuido")->valuestring;
+    json_data.porta_servidor_distribuido = cJSON_GetObjectItem(json, "porta_servidor_distribuido")->valueint;
 
     cJSON* lista_outputs = cJSON_GetObjectItem(json, "outputs");
     cJSON* lista_inputs = cJSON_GetObjectItem(json, "inputs");

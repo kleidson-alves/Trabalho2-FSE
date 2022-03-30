@@ -29,7 +29,3 @@ int parse(char* filename);
 JSONData getJSONData();
 
 #endif
-
-
-"ip_servidor_distribuido": "192.168.0.52",
-"porta_servidor_distribuido" : 10151,
