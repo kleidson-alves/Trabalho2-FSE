@@ -28,8 +28,9 @@ void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
 
     // Connect
     if (connect(clienteSocket, (struct sockaddr*)&servidorAddr,
-        sizeof(servidorAddr)) < 0)
-        printf("Erro no connect()\n");
+        sizeof(servidorAddr)) < 0) {
+        return;
+    }
 
     tamanhoMensagem = strlen(mensagem);
 

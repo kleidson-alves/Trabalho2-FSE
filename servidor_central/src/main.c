@@ -14,19 +14,26 @@
 #define LAMP_CORREDOR 2
 #define AR_COND 3
 #define ASPERSOR 4
+#define MAX_ANDARES 2
+
+#define RED 1
+#define GREEN 2
+#define BLUE 3
+#define DEFAULT 4
+
 
 
 cJSON* json;
 JSONData info;
 
 int qntd_pessoas = 0;
-int estados_sensores[5];
-int secao_menu = 1;
+int estados_sensores[MAX_ANDARES][5];
+int andar_atual = 1;
 
 int liga_desliga(int sensor) {
     for (int i = 0; i < 5;i++) {
         if (i == sensor) {
-            if (estados_sensores[i] == 1)
+            if (estados_sensores[andar_atual][i] == 1)
                 return 0;
             else
                 return 1;
@@ -56,7 +63,7 @@ int busca_sensor(char* nome, int pos) {
 void trata_mensagem(JSONMessage mensagem) {
     int sensor = busca_sensor(mensagem.sensor, mensagem.numero);
     if (sensor != -1) {
-        estados_sensores[sensor] = liga_desliga(sensor);
+        estados_sensores[andar_atual][sensor] = liga_desliga(sensor);
     }
 }
 
@@ -104,13 +111,11 @@ void* aguarda_comando_usuario(void* args) {
             message = buildMessage("aspersor", 1, liga_desliga(ASPERSOR));
             break;
 
-        case A_RIGHT:
-            if (secao_menu == 1)
-                secao_menu = 2;
+        case 'p':
+            andar_atual++;
             break;
-        case A_LEFT:
-            if (secao_menu == 2)
-                secao_menu = 1;
+        case 'a':
+            andar_atual--;
             break;
 
         case 'q':
@@ -128,22 +133,54 @@ void* aguarda_comando_usuario(void* args) {
     }
 }
 
-void menu_comandos() {
-    if (secao_menu == 2)
-        mvprintw(5, 0, "------------- COMANDOS PRIMEIRO ANDAR -------------");
 
-    mvprintw(6, 0, "1 - ligar/desligar Lampada Sala 1");
-    mvprintw(7, 0, "2 - ligar/desligar Lampada  Sala 2");
-    mvprintw(8, 0, "3 - ligar/desligar Lampada Corredor");
-    mvprintw(9, 0, "4 - ligar/desligar Ar Condicionado");
 
-    if (secao_menu == 1) {
-        mvprintw(5, 0, "------------- COMANDOS TERREO -------------");
-        mvprintw(10, 0, "5 - ligar/desligar Aspersor");
-        mvprintw(11, 0, "6 - ligar/desligar Alarme\n");
+void seleciona_cor(int sensor) {
+    if (estados_sensores[andar_atual][sensor] == 1) {
+        attron(COLOR_PAIR(GREEN));
     }
-
+    else
+        attron(COLOR_PAIR(RED));
 }
+
+void apresenta_info() {
+    attron(COLOR_PAIR(DEFAULT));
+    mvprintw(0, 0, "------------- Informações %dº andar -------------", andar_atual);
+    attroff(COLOR_PAIR(DEFAULT));
+
+    attron(COLOR_PAIR(BLUE));
+    mvprintw(1, 0, "Pessoas no predio: %d", qntd_pessoas);
+    attroff(COLOR_PAIR(BLUE));
+}
+
+void menu_comandos() {
+    attroff(COLOR_PAIR(GREEN));
+    mvprintw(5, 0, "------------- COMANDOS -------------");
+
+    seleciona_cor(LAMP_1);
+    mvprintw(6, 0, "1 -  Lampada Sala 1");
+
+    seleciona_cor(LAMP_2);
+    mvprintw(7, 0, "2 - Lampada  Sala 2");
+
+    seleciona_cor(LAMP_CORREDOR);
+    mvprintw(8, 0, "3 -  Lampada Corredor");
+
+    seleciona_cor(AR_COND);
+    mvprintw(6, 30, "4 - Ar Condicionado");
+
+    if (andar_atual == 1) {
+        seleciona_cor(ASPERSOR);
+        mvprintw(7, 0, "5 -  Aspersor");
+        mvprintw(8, 30, "6 -  Alarme\n");
+    }
+    if (andar_atual != 1)
+        mvprintw(13, 0, "a - <");
+
+    if (andar_atual != MAX_ANDARES)
+        mvprintw(13, 30, "p - >");
+}
+
 
 int main(void) {
     pthread_t t1, thread_menu;
@@ -152,18 +189,22 @@ int main(void) {
     unsigned short porta = 10051;
     int exit = 0;
 
-    pthread_create(&t1, NULL, servidor_escuta, &porta);
-
-    pthread_create(&thread_menu, NULL, aguarda_comando_usuario, &exit);
-
     initscr();
     curs_set(0);
     noecho();
+    start_color();
+
+    init_pair(DEFAULT, COLOR_WHITE, COLOR_BLACK);
+    init_pair(RED, COLOR_RED, COLOR_BLACK);
+    init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
+    init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
+
+    pthread_create(&t1, NULL, servidor_escuta, &porta);
+    pthread_create(&thread_menu, NULL, aguarda_comando_usuario, &exit);
 
     while (1) {
         clear();
-        mvprintw(1, 0, "Pessoas no primeiro andar - %d", qntd_pessoas);
-
+        apresenta_info();
         menu_comandos();
         refresh();
         sleep(1);

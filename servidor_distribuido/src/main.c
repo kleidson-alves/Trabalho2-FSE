@@ -87,13 +87,7 @@ void* observa_sensores(void* args) {
     thread_args estados = *(thread_args*)args;
     thread_args estados_anteriores;
 
-    estados_anteriores.estado_entrada = 0;
-    estados_anteriores.fumaca = 0;
-    estados_anteriores.janela01 = 0;
-    estados_anteriores.janela02 = 0;
-    estados_anteriores.porta = 0;
-    estados_anteriores.presenca = 0;
-
+    memset(&estados_anteriores, 0, sizeof(estados_anteriores));
     estados = estados_anteriores;
 
     while (1) {
