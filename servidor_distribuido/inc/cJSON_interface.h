@@ -9,7 +9,6 @@ typedef struct IO {
     char* tag;
 }IO;
 
-
 typedef struct JSONData {
     char* ip_servidor_central;
     char* ip_servidor_distribuido;
@@ -22,10 +21,16 @@ typedef struct JSONData {
     struct IO* sensores;
 } JSONData;
 
+typedef struct JSONMessage {
+    char* sensor;
+    int numero;
+    int comand;
+}JSONMessage;
 
 void printIOData(IO g);
 void buildStructList(IO* result, cJSON* list, char type);
 int parse(char* filename);
+JSONMessage parseMessage(cJSON* json);
 JSONData getJSONData();
 
 #endif

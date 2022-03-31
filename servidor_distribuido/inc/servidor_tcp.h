@@ -1,7 +1,10 @@
 #ifndef SERVIDOR_TCP_H
 #define SERVIDOR_TCP_H
 
-void TrataClienteTCP(int socketCliente);
-void* escuta(void* porta);
+#include "cJSON.h"
 
+void TrataClienteTCP(int socketCliente);
+void inicializaEscuta(unsigned short servidorPorta);
+cJSON* obterMensagem();
+void finalizaEscuta();
 #endif

@@ -3,7 +3,8 @@
 
 #include "cJSON.h"
 
-
 void TrataClienteTCP(int socketCliente);
-cJSON* escuta(unsigned short porta);
+void inicializaEscuta(unsigned short servidorPorta);
+cJSON* obterMensagem();
+void finalizaEscuta();
 #endif

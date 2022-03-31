@@ -7,6 +7,7 @@
 
 #include "cJSON_interface.h"
 #include "cliente_tcp.h"
+#include "servidor_tcp.h"
 
 typedef struct thread_args {
     int estado_entrada;
@@ -42,6 +43,7 @@ void enviaJson(thread_args estados) {
     cJSON* janela1 = NULL;
     cJSON* janela2 = NULL;
     cJSON* porta = NULL;
+    cJSON* distribuido_porta = NULL;
 
     entrada = cJSON_CreateNumber(estados.estado_entrada);
     saida = cJSON_CreateNumber(estados.estado_saida);
@@ -50,6 +52,7 @@ void enviaJson(thread_args estados) {
     janela1 = cJSON_CreateNumber(estados.janela01);
     janela2 = cJSON_CreateNumber(estados.janela02);
     porta = cJSON_CreateNumber(estados.porta);
+    distribuido_porta = cJSON_CreateNumber(info.porta_servidor_distribuido);
 
 
     cJSON_AddItemToObject(estados_json, "entrada", entrada);
@@ -59,9 +62,9 @@ void enviaJson(thread_args estados) {
     cJSON_AddItemToObject(estados_json, "janela1", janela1);
     cJSON_AddItemToObject(estados_json, "janela2", janela2);
     cJSON_AddItemToObject(estados_json, "porta", porta);
+    cJSON_AddItemToObject(estados_json, "porta_servidor_distribuido", distribuido_porta);
 
     char* mensagem = cJSON_Print(estados_json);
-
     envia(info.ip_servidor_central, info.porta_servidor_central, mensagem);
 }
 
@@ -130,6 +133,7 @@ int main(int argc, char** argv) {
         printf("make run FILE=<arquivo_entrada>\n");
         return 0;
     }
+
     if (parse(argv[1]) == -1)
         return 0;
 
@@ -141,12 +145,20 @@ int main(int argc, char** argv) {
 
     pthread_create(&(thread), NULL, &observa_sensores, &args);
 
-    while (1) {
+    cJSON* json;
+    JSONMessage solicitacao;
 
+    inicializaEscuta(info.porta_servidor_distribuido);
+
+    while (1) {
+        json = obterMensagem();
+        solicitacao = parseMessage(json);
+        int gpio = encontra_gpio(info.outputs, info.qntd_outputs, solicitacao.sensor, solicitacao.numero);
+        // write_sensor(gpio, solicitacao.comand);
         sleep(1);
     }
 
-
+    finalizaEscuta();
 
     return 0;
 }

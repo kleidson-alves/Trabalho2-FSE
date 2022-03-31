@@ -9,12 +9,18 @@
 #include "servidor_tcp.h"
 #include "cJSON.h"
 
+cJSON* json;
+int servidorSocket;
+int socketCliente;
+struct sockaddr_in servidorAddr;
+struct sockaddr_in clienteAddr;
+unsigned int clienteLength;
 
 void TrataClienteTCP(int socketCliente) {
-    char buffer[200];
+    char buffer[300];
     int tamanhoRecebido;
 
-    if ((tamanhoRecebido = recv(socketCliente, buffer, 200, 0)) < 0)
+    if ((tamanhoRecebido = recv(socketCliente, buffer, 300, 0)) < 0)
         printf("Erro no recv()\n");
 
     buffer[tamanhoRecebido] = '\0';
@@ -23,23 +29,14 @@ void TrataClienteTCP(int socketCliente) {
         if (send(socketCliente, buffer, tamanhoRecebido, 0) != tamanhoRecebido)
             printf("Erro no envio - send()\n");
 
-        if ((tamanhoRecebido = recv(socketCliente, buffer, 200, 0)) < 0)
+        if ((tamanhoRecebido = recv(socketCliente, buffer, 300, 0)) < 0)
             printf("Erro no recv()\n");
     }
-    printf("%s\n", buffer);
+
+    json = cJSON_Parse(buffer);
 }
 
-void* escuta(void* porta) {
-    int servidorSocket;
-    int socketCliente;
-    struct sockaddr_in servidorAddr;
-    struct sockaddr_in clienteAddr;
-    unsigned int clienteLength;
-
-    unsigned short servidorPorta = *((unsigned short*)porta);
-    printf("%hd\n", servidorPorta);
-
-    // Abrir Socket
+void inicializaEscuta(unsigned short servidorPorta) {
     if ((servidorSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         printf("falha no socker do Servidor\n");
 
@@ -57,19 +54,23 @@ void* escuta(void* porta) {
     if (listen(servidorSocket, 10) < 0)
         printf("Falha no Listen\n");
 
-    while (1) {
-        clienteLength = sizeof(clienteAddr);
-        if ((socketCliente = accept(servidorSocket,
-            (struct sockaddr*)&clienteAddr,
-            &clienteLength)) < 0)
-            printf("Falha no Accept\n");
+}
 
-        printf("Conexão do Cliente %s\n", inet_ntoa(clienteAddr.sin_addr));
+cJSON* obterMensagem() {
 
-        TrataClienteTCP(socketCliente);
-        close(socketCliente);
+    clienteLength = sizeof(clienteAddr);
+    if ((socketCliente = accept(servidorSocket,
+        (struct sockaddr*)&clienteAddr,
+        &clienteLength)) < 0)
+        printf("Falha no Accept\n");
 
-    }
+    TrataClienteTCP(socketCliente);
+    close(socketCliente);
+
+    return json;
+}
+
+void finalizaEscuta() {
+
     close(servidorSocket);
-
 }

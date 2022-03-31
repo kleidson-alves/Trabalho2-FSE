@@ -5,12 +5,13 @@
 #include <string.h>
 #include <unistd.h>
 #include "cliente_tcp.h"
+#include "cJSON_interface.h"
 
-void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
+char* envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
     int clienteSocket;
     struct sockaddr_in servidorAddr;
 
-    char buffer[16];
+    char buffer[300];
     unsigned int tamanhoMensagem;
 
     int bytesRecebidos;
@@ -37,11 +38,20 @@ void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
         printf("Erro no envio: numero de bytes enviados diferente do esperado\n");
 
     totalBytesRecebidos = 0;
+    char* mensagemRetorno;
+    int erro = 0;
     while (totalBytesRecebidos < tamanhoMensagem) {
-        if ((bytesRecebidos = recv(clienteSocket, buffer, 300 - 1, 0)) <= 0)
+        if ((bytesRecebidos = recv(clienteSocket, buffer, 300 - 1, 0)) <= 0) {
             printf("Não recebeu o total de bytes enviados\n");
+            mensagemRetorno = buildMessage("nenhum", -1, -1);
+            erro = 1;
+        }
         totalBytesRecebidos += bytesRecebidos;
         buffer[bytesRecebidos] = '\0';
     }
+    if (erro == 0)
+        mensagemRetorno = mensagem;
     close(clienteSocket);
+
+    return mensagemRetorno;
 }

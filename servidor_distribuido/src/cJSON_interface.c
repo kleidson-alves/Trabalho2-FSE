@@ -57,7 +57,7 @@ int parse(char* filename) {
 
     cJSON* lista_outputs = cJSON_GetObjectItem(json, "outputs");
     cJSON* lista_inputs = cJSON_GetObjectItem(json, "inputs");
-    cJSON* lista_sensores = cJSON_GetObjectItem(json, "sensor_temepratura");
+    cJSON* lista_sensores = cJSON_GetObjectItem(json, "sensor_temperatura");
 
     json_data.qntd_outputs = cJSON_GetArraySize(lista_outputs);
     json_data.qntd_inputs = cJSON_GetArraySize(lista_inputs);
@@ -70,10 +70,20 @@ int parse(char* filename) {
 
     buildStructList(json_data.outputs, lista_outputs, 't');
     buildStructList(json_data.inputs, lista_inputs, 't');
-    buildStructList(json_data.sensores, lista_sensores, 'm');
+    buildStructList(json_data.sensores, lista_sensores, 't');
 
     return 0;
 }
+
+JSONMessage parseMessage(cJSON* json) {
+    JSONMessage data;
+    data.sensor = cJSON_GetObjectItem(json, "sensor")->valuestring;
+    data.numero = cJSON_GetObjectItem(json, "numero")->valueint;
+    data.comand = cJSON_GetObjectItem(json, "comando")->valueint;
+
+    return data;
+}
+
 
 JSONData getJSONData() {
     return json_data;
