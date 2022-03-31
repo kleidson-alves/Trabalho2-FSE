@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
         json = obterMensagem();
         solicitacao = parseMessage(json);
         int gpio = encontra_gpio(info.outputs, info.qntd_outputs, solicitacao.sensor, solicitacao.numero);
-        // write_sensor(gpio, solicitacao.comand);
+        write_sensor_value(gpio, solicitacao.comand);
         sleep(1);
     }
 

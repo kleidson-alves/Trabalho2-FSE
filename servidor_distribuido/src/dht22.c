@@ -84,6 +84,12 @@ int initWiringPi() {
     return 0;
 }
 
+void write_sensor_value(int8_t pin, int value) {
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, value);
+}
+
+
 float get_dht_data(char mode, int8_t pin) {
     int done = 0;
     dht_pin = pin;

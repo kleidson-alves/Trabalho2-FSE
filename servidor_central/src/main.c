@@ -158,6 +158,7 @@ int main(void) {
 
     initscr();
     curs_set(0);
+    noecho();
 
     while (1) {
         clear();
