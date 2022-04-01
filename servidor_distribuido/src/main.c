@@ -43,67 +43,67 @@ int comparaEstados(StateSensor estado1, StateSensor estado2) {
     return 0;
 }
 
-void carrega_estados() {
+StateSensor carrega_estados() {
+
+    StateSensor estados;
     int sensor_entrada = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 1);
     int sensor_saida = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 2);
 
-    estados_anteriores.estado_entrada = read_sensor_value(sensor_entrada);
-    estados_anteriores.estado_saida = read_sensor_value(sensor_saida);
+    estados.estado_entrada = read_sensor_value(sensor_entrada);
+    estados.estado_saida = read_sensor_value(sensor_saida);
 
-    estados_anteriores.presenca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "presenca", 1));
-    estados_anteriores.fumaca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "fumaca", 1));
-    estados_anteriores.janela01 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 1));
-    estados_anteriores.janela02 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 2));
-    estados_anteriores.ar_cond = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "ar-condicionado", 1));
-    estados_anteriores.lampada1 = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 1));
-    estados_anteriores.lampada2 = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 2));
-    estados_anteriores.lampada_corredor = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 3));
+    estados.presenca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "presenca", 1));
+    estados.fumaca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "fumaca", 1));
+    estados.janela01 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 1));
+    estados.janela02 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 2));
+    estados.ar_cond = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "ar-condicionado", 1));
+    estados.lampada1 = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 1));
+    estados.lampada2 = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 2));
+    estados.lampada_corredor = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 3));
 
 
     int sensor_porta = encontra_gpio(info.inputs, info.qntd_inputs, "porta", 1);
     int sensor_aspersor = encontra_gpio(info.outputs, info.qntd_outputs, "aspersor", 1);
     if (sensor_porta != -1) {
-        estados_anteriores.porta = read_sensor_value(sensor_porta);
-        estados_anteriores.aspersor = read_sensor_value(sensor_aspersor);
+        estados.porta = read_sensor_value(sensor_porta);
+        estados.aspersor = read_sensor_value(sensor_aspersor);
     }
     else {
-        estados_anteriores.porta = -1;
+        estados.porta = -1;
+        estados.aspersor = -1;
     }
 
-    char* mensagem = cJSON_Print(buildJson(estados_anteriores, info.porta_servidor_distribuido));
+    return estados;
+
+}
+
+void envia_estados_iniciais() {
+    char* mensagem = cJSON_Print(buildJson(carrega_estados(), info.porta_servidor_distribuido));
     while (envia(info.ip_servidor_central, info.porta_servidor_central, mensagem) == -1) {
         printf("Aguardando conectar-se ao servidor_central\n");
         sleep(2);
     }
-
 }
 
 
 void* observa_sensores(void* args) {
     int cont = 0;
     StateSensor estados = *(StateSensor*)args;
-    memset(&estados, 0, sizeof(estados));
+    estados = estados_anteriores;
 
     while (1) {
 
-        int sensor_entrada = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 1);
-        int sensor_saida = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 2);
-
-        estados.estado_entrada = read_sensor_value(sensor_entrada);
-        estados.estado_saida = read_sensor_value(sensor_saida);
-
         if (cont % 10 == 0) {
             cont = 0;
-            estados.presenca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "presenca", 1));
-            estados.fumaca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "fumaca", 1));
-            estados.janela01 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 1));
-            estados.janela02 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 2));
+            estados = carrega_estados();
+        }
+        else {
+            int sensor_entrada = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 1);
+            int sensor_saida = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 2);
 
-            int sensor_porta = encontra_gpio(info.inputs, info.qntd_inputs, "porta", 1);
+            estados.estado_entrada = read_sensor_value(sensor_entrada);
+            estados.estado_saida = read_sensor_value(sensor_saida);
 
-            if (sensor_porta != -1) {
-                estados.porta = read_sensor_value(sensor_porta);
-            }
         }
         if (comparaEstados(estados, estados_anteriores))
             enviaJson(estados);
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     pthread_t thread;
     StateSensor args;
 
-    carrega_estados();
+    envia_estados_iniciais();
 
     pthread_create(&(thread), NULL, &observa_sensores, &args);
 

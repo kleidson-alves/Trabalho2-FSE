@@ -22,6 +22,7 @@ JSONData* estados_sensores;
 int qntd_pessoas = 0;
 int qntd_andares = 0;
 int andar_atual = 0;
+int alarme = 0;
 
 int liga_desliga(int estado) {
     if (estado == 1)
@@ -30,38 +31,23 @@ int liga_desliga(int estado) {
     return 1;
 }
 
-int busca_sensor(char* nome, int pos) {
-    // if (strcmp(nome, "lampada") == 0) {
-    //     if (pos == 1)
-    //         return LAMP_1;
-    //     else if (pos == 2)
-    //         return LAMP_2;
-    //     else
-    //         return LAMP_CORREDOR;
-    // }
-    // else if (strcmp(nome, "aspersor") == 0)
-    //     return ASPERSOR;
-    // else if (strcmp(nome, "ar-condicionado") == 0)
-    //     return AR_COND;
-
-    return -1;
-}
-
-void trata_mensagem(JSONMessage mensagem) {
-    // int sensor = busca_sensor(mensagem.sensor, mensagem.numero);
-    // if (sensor != -1) {
-    //     estados_sensores[andar_atual][sensor] = liga_desliga(sensor);
-    // }
-}
-
 int verifica_nova_conexao(JSONData json_data) {
-    int nova = 0;
+    int nova = 1;
     for (int i = 0; i < qntd_andares; i++) {
         if (estados_sensores[i].distribuido_porta == json_data.distribuido_porta) {
-            return 1;
+            return 0;
         }
     }
     return nova;
+}
+
+void atualiza_andar(JSONData json_data) {
+    for (int i = 0; i < qntd_andares; i++) {
+        if (estados_sensores[i].distribuido_porta == json_data.distribuido_porta) {
+            estados_sensores[i] = json_data;
+            return;
+        }
+    }
 }
 
 void* servidor_escuta(void* args) {
@@ -86,7 +72,7 @@ void* servidor_escuta(void* args) {
             qntd_andares++;
             estados_sensores = realloc(estados_sensores, qntd_andares * sizeof(JSONData));
         }
-        else {
+        if (info.distribuido_porta == 10151) {
             if (info.estado_entrada == 1 && estado_anterior_entrada == 0)
                 qntd_pessoas++;
             if (info.estado_saida == 1 && estado_anterior_saida == 0)
@@ -94,9 +80,9 @@ void* servidor_escuta(void* args) {
 
             estado_anterior_entrada = info.estado_entrada;
             estado_anterior_saida = info.estado_saida;
-
         }
 
+        atualiza_andar(info);
 
     }
 
@@ -146,7 +132,6 @@ void* aguarda_comando_usuario(void* args) {
             char* return_message;
             return_message = envia("192.168.0.38", distribuido_porta, message);
             json_message = parseMessage(return_message);
-            trata_mensagem(json_message);
         }
     }
 }
@@ -187,9 +172,10 @@ void menu_comandos() {
     seleciona_cor(estados_sensores[andar_atual].ar_cond);
     mvprintw(6, 30, "4 - Ar Condicionado");
 
-    if (estados_sensores[andar_atual].distribuido_porta = 10151) {
+    if (estados_sensores[andar_atual].distribuido_porta == 10151) {
         seleciona_cor(estados_sensores[andar_atual].aspersor);
-        mvprintw(7, 0, "5 -  Aspersor");
+        mvprintw(7, 30, "5 -  Aspersor");
+        seleciona_cor(alarme);
         mvprintw(8, 30, "6 -  Alarme\n");
     }
 
@@ -201,7 +187,6 @@ void menu_comandos() {
         mvprintw(13, 0, "<- a");
 
 
-
     if (andar_atual != qntd_andares - 1)
         mvprintw(13, 30, "p ->");
 }
@@ -209,7 +194,6 @@ void menu_comandos() {
 
 int main(void) {
     pthread_t t1, thread_menu;
-    memset(&estados_sensores, 0, sizeof(estados_sensores));
 
     unsigned short porta = 10051;
     int exit = 0;
