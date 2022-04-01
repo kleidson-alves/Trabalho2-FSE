@@ -27,8 +27,24 @@ typedef struct JSONMessage {
     int comand;
 }JSONMessage;
 
+typedef struct StateSensor {
+    int estado_entrada;
+    int estado_saida;
+    int presenca;
+    int fumaca;
+    int janela01;
+    int janela02;
+    int lampada1;
+    int lampada2;
+    int lampada_corredor;
+    int porta;
+    int ar_cond;
+    int aspersor;
+}StateSensor;
+
 void printIOData(IO g);
 void buildStructList(IO* result, cJSON* list, char type);
+cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido);
 int parse(char* filename);
 JSONMessage parseMessage(cJSON* json);
 JSONData getJSONData();

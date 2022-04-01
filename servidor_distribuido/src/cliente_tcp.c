@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include "cliente_tcp.h"
 
-void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
+int envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
     int clienteSocket;
     struct sockaddr_in servidorAddr;
 
@@ -29,7 +29,7 @@ void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
     // Connect
     if (connect(clienteSocket, (struct sockaddr*)&servidorAddr,
         sizeof(servidorAddr)) < 0) {
-        return;
+        return -1;
     }
 
     tamanhoMensagem = strlen(mensagem);
@@ -45,4 +45,5 @@ void envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
         buffer[bytesRecebidos] = '\0';
     }
     close(clienteSocket);
+    return 0;
 }

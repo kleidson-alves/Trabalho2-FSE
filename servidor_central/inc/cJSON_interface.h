@@ -24,9 +24,13 @@ typedef struct JSONData {
     int janela01;
     int janela02;
     int porta;
+    int lampada1;
+    int lampada2;
+    int lampada_corredor;
+    int ar_cond;
+    int aspersor;
     unsigned short distribuido_porta;
 } JSONData;
-
 
 JSONData parseJson(cJSON* json);
 char* buildMessage(char* name, int num, int comand);

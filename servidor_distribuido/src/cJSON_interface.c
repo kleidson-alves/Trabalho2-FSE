@@ -84,6 +84,56 @@ JSONMessage parseMessage(cJSON* json) {
     return data;
 }
 
+cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido) {
+    cJSON* estados_json = cJSON_CreateObject();
+    cJSON* entrada = NULL;
+    cJSON* saida = NULL;
+    cJSON* presenca = NULL;
+    cJSON* fumaca = NULL;
+    cJSON* janela1 = NULL;
+    cJSON* janela2 = NULL;
+    cJSON* porta = NULL;
+    cJSON* lampada1 = NULL;
+    cJSON* lampada2 = NULL;
+    cJSON* lampada_corredor = NULL;
+    cJSON* ar_cond = NULL;
+    cJSON* aspersor = NULL;
+    cJSON* distribuido_porta = NULL;
+
+    entrada = cJSON_CreateNumber(estados.estado_entrada);
+    saida = cJSON_CreateNumber(estados.estado_saida);
+    presenca = cJSON_CreateNumber(estados.presenca);
+    fumaca = cJSON_CreateNumber(estados.fumaca);
+    janela1 = cJSON_CreateNumber(estados.janela01);
+    janela2 = cJSON_CreateNumber(estados.janela02);
+    porta = cJSON_CreateNumber(estados.porta);
+    lampada1 = cJSON_CreateNumber(estados.lampada1);
+    lampada2 = cJSON_CreateNumber(estados.lampada2);
+    lampada_corredor = cJSON_CreateNumber(estados.lampada_corredor);
+    ar_cond = cJSON_CreateNumber(estados.ar_cond);
+    aspersor = cJSON_CreateNumber(estados.aspersor);
+
+
+    distribuido_porta = cJSON_CreateNumber(porta_servidor_distribuido);
+
+
+    cJSON_AddItemToObject(estados_json, "entrada", entrada);
+    cJSON_AddItemToObject(estados_json, "saida", saida);
+    cJSON_AddItemToObject(estados_json, "presenca", presenca);
+    cJSON_AddItemToObject(estados_json, "fumaca", fumaca);
+    cJSON_AddItemToObject(estados_json, "janela1", janela1);
+    cJSON_AddItemToObject(estados_json, "janela2", janela2);
+    cJSON_AddItemToObject(estados_json, "porta", porta);
+    cJSON_AddItemToObject(estados_json, "lampada1", lampada1);
+    cJSON_AddItemToObject(estados_json, "lampada2", lampada2);
+    cJSON_AddItemToObject(estados_json, "lampada_corredor", lampada_corredor);
+    cJSON_AddItemToObject(estados_json, "ar-condicionado", ar_cond);
+    cJSON_AddItemToObject(estados_json, "aspersor", aspersor);
+    cJSON_AddItemToObject(estados_json, "porta_servidor_distribuido", distribuido_porta);
+
+    return estados_json;
+}
+
 
 JSONData getJSONData() {
     return json_data;

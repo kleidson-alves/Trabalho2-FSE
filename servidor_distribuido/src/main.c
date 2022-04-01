@@ -9,18 +9,8 @@
 #include "cliente_tcp.h"
 #include "servidor_tcp.h"
 
-typedef struct thread_args {
-    int estado_entrada;
-    int estado_saida;
-    int presenca;
-    int fumaca;
-    int janela01;
-    int janela02;
-    int porta;
-}thread_args;
-
-
 JSONData info;
+StateSensor estados_anteriores;
 
 int encontra_gpio(IO* listaIO, int tamanho_lista, char* nome_sensor, int numero_sensor) {
     int num = 1;
@@ -34,41 +24,13 @@ int encontra_gpio(IO* listaIO, int tamanho_lista, char* nome_sensor, int numero_
     return -1;
 }
 
-void enviaJson(thread_args estados) {
-    cJSON* estados_json = cJSON_CreateObject();
-    cJSON* entrada = NULL;
-    cJSON* saida = NULL;
-    cJSON* presenca = NULL;
-    cJSON* fumaca = NULL;
-    cJSON* janela1 = NULL;
-    cJSON* janela2 = NULL;
-    cJSON* porta = NULL;
-    cJSON* distribuido_porta = NULL;
-
-    entrada = cJSON_CreateNumber(estados.estado_entrada);
-    saida = cJSON_CreateNumber(estados.estado_saida);
-    presenca = cJSON_CreateNumber(estados.presenca);
-    fumaca = cJSON_CreateNumber(estados.fumaca);
-    janela1 = cJSON_CreateNumber(estados.janela01);
-    janela2 = cJSON_CreateNumber(estados.janela02);
-    porta = cJSON_CreateNumber(estados.porta);
-    distribuido_porta = cJSON_CreateNumber(info.porta_servidor_distribuido);
-
-
-    cJSON_AddItemToObject(estados_json, "entrada", entrada);
-    cJSON_AddItemToObject(estados_json, "saida", saida);
-    cJSON_AddItemToObject(estados_json, "presenca", presenca);
-    cJSON_AddItemToObject(estados_json, "fumaca", fumaca);
-    cJSON_AddItemToObject(estados_json, "janela1", janela1);
-    cJSON_AddItemToObject(estados_json, "janela2", janela2);
-    cJSON_AddItemToObject(estados_json, "porta", porta);
-    cJSON_AddItemToObject(estados_json, "porta_servidor_distribuido", distribuido_porta);
-
+void enviaJson(StateSensor estados) {
+    cJSON* estados_json = buildJson(estados, info.porta_servidor_distribuido);
     char* mensagem = cJSON_Print(estados_json);
     envia(info.ip_servidor_central, info.porta_servidor_central, mensagem);
 }
 
-int comparaEstados(thread_args estado1, thread_args estado2) {
+int comparaEstados(StateSensor estado1, StateSensor estado2) {
     if (estado1.estado_entrada != estado2.estado_entrada || estado1.estado_saida != estado2.estado_saida)
         return 1;
 
@@ -81,14 +43,46 @@ int comparaEstados(thread_args estado1, thread_args estado2) {
     return 0;
 }
 
+void carrega_estados() {
+    int sensor_entrada = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 1);
+    int sensor_saida = encontra_gpio(info.inputs, info.qntd_inputs, "contagem", 2);
+
+    estados_anteriores.estado_entrada = read_sensor_value(sensor_entrada);
+    estados_anteriores.estado_saida = read_sensor_value(sensor_saida);
+
+    estados_anteriores.presenca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "presenca", 1));
+    estados_anteriores.fumaca = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "fumaca", 1));
+    estados_anteriores.janela01 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 1));
+    estados_anteriores.janela02 = read_sensor_value(encontra_gpio(info.inputs, info.qntd_inputs, "janela", 2));
+    estados_anteriores.ar_cond = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "ar-condicionado", 1));
+    estados_anteriores.lampada1 = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 1));
+    estados_anteriores.lampada2 = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 2));
+    estados_anteriores.lampada_corredor = read_sensor_value(encontra_gpio(info.outputs, info.qntd_outputs, "lampada", 3));
+
+
+    int sensor_porta = encontra_gpio(info.inputs, info.qntd_inputs, "porta", 1);
+    int sensor_aspersor = encontra_gpio(info.outputs, info.qntd_outputs, "aspersor", 1);
+    if (sensor_porta != -1) {
+        estados_anteriores.porta = read_sensor_value(sensor_porta);
+        estados_anteriores.aspersor = read_sensor_value(sensor_aspersor);
+    }
+    else {
+        estados_anteriores.porta = -1;
+    }
+
+    char* mensagem = cJSON_Print(buildJson(estados_anteriores, info.porta_servidor_distribuido));
+    while (envia(info.ip_servidor_central, info.porta_servidor_central, mensagem) == -1) {
+        printf("Aguardando conectar-se ao servidor_central\n");
+        sleep(2);
+    }
+
+}
+
 
 void* observa_sensores(void* args) {
     int cont = 0;
-    thread_args estados = *(thread_args*)args;
-    thread_args estados_anteriores;
-
-    memset(&estados_anteriores, 0, sizeof(estados_anteriores));
-    estados = estados_anteriores;
+    StateSensor estados = *(StateSensor*)args;
+    memset(&estados, 0, sizeof(estados));
 
     while (1) {
 
@@ -135,7 +129,9 @@ int main(int argc, char** argv) {
 
     initWiringPi();
     pthread_t thread;
-    thread_args args;
+    StateSensor args;
+
+    carrega_estados();
 
     pthread_create(&(thread), NULL, &observa_sensores, &args);
 
