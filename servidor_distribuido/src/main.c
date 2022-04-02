@@ -41,6 +41,15 @@ int comparaEstados(StateSensor estado1, StateSensor estado2) {
     if (estado1.janela01 != estado2.janela01 || estado1.janela02 != estado2.janela02)
         return 1;
 
+    if (estado1.ar_cond != estado2.ar_cond || estado1.fumaca != estado2.fumaca || estado1.presenca != estado2.presenca)
+        return 1;
+
+    if (estado1.lampada1 != estado2.lampada1 || estado1.lampada2 != estado2.lampada2 || estado1.lampada_corredor != estado2.lampada_corredor)
+        return 1;
+
+    if (estado1.aspersor != estado2.aspersor || estado1.porta != estado2.porta)
+        return 1;
+
     return 0;
 }
 

@@ -22,6 +22,7 @@ JSONData* estados_sensores;
 char** andares;
 int* qntd_pessoas;
 int pessoas_predio = 0;
+int terreo;
 int qntd_andares = 0;
 int andar_atual = 0;
 int alarme = 0;
@@ -97,7 +98,8 @@ void* servidor_escuta(void* args) {
         if (qntd_andares == 0 || verifica_nova_conexao(info)) {
             cJSON* json_nome = obterMensagem();
             char* nome_andar = getFloorName(json_nome);
-
+            if (strcmp("Térreo", nome_andar) == 0)
+                terreo = qntd_andares;
             estados_sensores = realloc(estados_sensores, (qntd_andares + 1) * sizeof(JSONData));
             andares = realloc(andares, (qntd_andares + 1) * sizeof(andares));
             qntd_pessoas = realloc(qntd_pessoas, (qntd_andares + 1) * sizeof(int));
@@ -131,7 +133,7 @@ void* servidor_escuta(void* args) {
             if (strcmp(andares[i], "Térreo") != 0)
                 soma += qntd_pessoas[i];
         }
-        qntd_pessoas[0] = pessoas_predio - soma;
+        qntd_pessoas[terreo] = pessoas_predio - soma;
 
         atualiza_andar(info);
     }
@@ -142,6 +144,7 @@ void* servidor_escuta(void* args) {
 void* aguarda_comando_usuario(void* args) {
     int* exit = (int*)args;
     char* message;
+    int i = andar_atual;
 
     while (1) {
         char entrada_usuario = getch();
@@ -163,13 +166,11 @@ void* aguarda_comando_usuario(void* args) {
             message = buildMessage("aspersor", 1, liga_desliga(estados_sensores[andar_atual].aspersor));
             break;
 
-        case 'p':
-            if (andar_atual < qntd_andares - 1)
-                andar_atual++;
-            break;
-        case 'a':
-            if (andar_atual > 0)
-                andar_atual--;
+        case ' ':
+            i++;
+            if (i == qntd_andares)
+                i = 0;
+            andar_atual = i;
             break;
 
         case 'q':
@@ -202,44 +203,57 @@ void apresenta_info() {
     attroff(COLOR_PAIR(DEFAULT));
 
     attron(COLOR_PAIR(BLUE));
-    mvprintw(1, 0, "Pessoas no prédio: %d", pessoas_predio);
-    mvprintw(2, 0, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
+    mvprintw(2, 0, "Pessoas no prédio: %d", pessoas_predio);
+    mvprintw(3, 0, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
     attroff(COLOR_PAIR(BLUE));
+
+    seleciona_cor(estados_sensores[andar_atual].presenca);
+    mvprintw(2, 40, "Sensor de presença");
+    seleciona_cor(estados_sensores[andar_atual].fumaca);
+    mvprintw(3, 40, "Sensor de fumaça");
+    seleciona_cor(estados_sensores[andar_atual].janela01);
+    mvprintw(4, 40, "Janela 1");
+    seleciona_cor(estados_sensores[andar_atual].janela02);
+    mvprintw(5, 40, "Janela 2");
+
+    if (strcmp(andares[andar_atual], "Térreo") == 0) {
+        seleciona_cor(estados_sensores[andar_atual].porta);
+        mvprintw(6, 40, "Porta de Entrada");
+    }
+
+
 }
 
 void menu_comandos() {
     attroff(COLOR_PAIR(GREEN));
-    mvprintw(5, 0, "------------- COMANDOS ----------------------");
+    int row_init = 8;
+    mvprintw(row_init, 0, "-------------------- COMANDOS --------------------");
 
     seleciona_cor(estados_sensores[andar_atual].lampada1);
-    mvprintw(6, 0, "1 - Lampada Sala 1");
+    mvprintw(row_init + 2, 0, "[1] Lampada Sala 1");
 
     seleciona_cor(estados_sensores[andar_atual].lampada2);
-    mvprintw(7, 0, "2 - Lampada  Sala 2");
+    mvprintw(row_init + 3, 0, "[2] Lampada  Sala 2");
 
     seleciona_cor(estados_sensores[andar_atual].lampada_corredor);
-    mvprintw(8, 0, "3 - Lampada Corredor");
+    mvprintw(row_init + 4, 0, "[3] Lampada Corredor");
 
     seleciona_cor(estados_sensores[andar_atual].ar_cond);
-    mvprintw(6, 30, "4 - Ar Condicionado");
+    mvprintw(row_init + 2, 30, "[4] Ar Condicionado");
 
     if (strcmp(andares[andar_atual], "Térreo") == 0) {
         seleciona_cor(estados_sensores[andar_atual].aspersor);
-        mvprintw(7, 30, "5 -  Aspersor");
+        mvprintw(row_init + 3, 30, "[5] Aspersor");
         seleciona_cor(alarme);
-        mvprintw(8, 30, "6 -  Alarme\n");
+        mvprintw(row_init + 4, 30, "[6] Alarme\n");
     }
 
     attroff(COLOR_PAIR(GREEN));
     attroff(COLOR_PAIR(RED));
 
-    if (andar_atual != 0)
+    if (qntd_andares > 0)
+        mvprintw(row_init + 10, 10, "Pressione espaço para trocar de andar");
 
-        mvprintw(13, 0, "<- a");
-
-
-    if (andar_atual != qntd_andares - 1)
-        mvprintw(13, 30, "p ->");
 }
 
 
