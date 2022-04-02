@@ -34,6 +34,7 @@ typedef struct JSONData {
 
 JSONData parseJson(cJSON* json);
 char* buildMessage(char* name, int num, int comand);
+char* getFloorName(cJSON* json);
 JSONMessage parseMessage(char* message);
 
 #endif

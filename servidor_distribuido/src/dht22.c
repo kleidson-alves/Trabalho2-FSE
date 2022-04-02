@@ -71,7 +71,6 @@ int read_dht_data() {
 }
 
 int read_sensor_value(int8_t pin) {
-    pinMode(pin, INPUT);
     return digitalRead(pin);
 }
 

@@ -10,6 +10,7 @@ typedef struct IO {
 }IO;
 
 typedef struct JSONData {
+    char* nome;
     char* ip_servidor_central;
     char* ip_servidor_distribuido;
     unsigned short porta_servidor_central;
@@ -45,6 +46,7 @@ typedef struct StateSensor {
 void printIOData(IO g);
 void buildStructList(IO* result, cJSON* list, char type);
 cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido);
+cJSON* buildJsonToName(char* name);
 int parse(char* filename);
 JSONMessage parseMessage(cJSON* json);
 JSONData getJSONData();

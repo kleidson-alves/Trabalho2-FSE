@@ -19,7 +19,10 @@
 
 cJSON* json;
 JSONData* estados_sensores;
-int qntd_pessoas = 0;
+
+char** andares;
+int* qntd_pessoas;
+int pessoas_predio = 0;
 int qntd_andares = 0;
 int andar_atual = 0;
 int alarme = 0;
@@ -57,33 +60,52 @@ void* servidor_escuta(void* args) {
     int estado_anterior_entrada = 0;
     int estado_anterior_saida = 0;
 
-    estados_sensores = malloc(sizeof(JSONData));
-
     inicializaEscuta(porta);
-    json = obterMensagem();
-    estados_sensores[0] = parseJson(json);
-    qntd_andares++;
 
     while (1) {
         json = obterMensagem();
         info = parseJson(json);
 
-        if (verifica_nova_conexao(info)) {
-            qntd_andares++;
-            estados_sensores = realloc(estados_sensores, qntd_andares * sizeof(JSONData));
-        }
-        if (info.distribuido_porta == 10151) {
-            if (info.estado_entrada == 1 && estado_anterior_entrada == 0)
-                qntd_pessoas++;
-            if (info.estado_saida == 1 && estado_anterior_saida == 0)
-                qntd_pessoas--;
+        if (qntd_andares == 0 || verifica_nova_conexao(info)) {
+            cJSON* json_nome = obterMensagem();
+            char* nome_andar = getFloorName(json_nome);
 
-            estado_anterior_entrada = info.estado_entrada;
-            estado_anterior_saida = info.estado_saida;
+            estados_sensores = realloc(estados_sensores, (qntd_andares + 1) * sizeof(JSONData));
+            andares = realloc(andares, (qntd_andares + 1) * sizeof(andares));
+            qntd_pessoas = realloc(qntd_pessoas, (qntd_andares + 1) * sizeof(int));
+
+            andares[qntd_andares] = nome_andar;
+            qntd_pessoas[qntd_andares] = 0;
+            estados_sensores[qntd_andares] = info;
+
+            qntd_andares++;
+        }
+
+        estado_anterior_entrada = estados_sensores[andar_atual].estado_entrada;
+        estado_anterior_saida = estados_sensores[andar_atual].estado_saida;
+
+        if (strcmp(andares[andar_atual], "Térreo") == 0) {
+            if (info.estado_entrada == 1 && estado_anterior_entrada == 0)
+                pessoas_predio++;
+            if (info.estado_saida == 1 && estado_anterior_saida == 0)
+                pessoas_predio--;
+
+            int soma = 0;
+            for (int i = 0; i < qntd_andares; i++) {
+                if (strcmp(andares[i], "Térreo") != 0)
+                    soma += qntd_pessoas[i];
+            }
+            if (qntd_andares > 1)
+                qntd_pessoas[andar_atual] = soma;
+        }
+        else {
+            if (info.estado_entrada == 1 && estado_anterior_entrada == 0)
+                qntd_pessoas[andar_atual]++;
+            if (info.estado_saida == 1 && estado_anterior_saida == 0)
+                qntd_pessoas[andar_atual]--;
         }
 
         atualiza_andar(info);
-
     }
 
     finalizaEscuta();
@@ -128,9 +150,8 @@ void* aguarda_comando_usuario(void* args) {
         }
         if (message != NULL) {
             JSONMessage json_message;
-            unsigned short distribuido_porta = 10151;
             char* return_message;
-            return_message = envia("192.168.0.38", distribuido_porta, message);
+            return_message = envia("192.168.0.38", estados_sensores[andar_atual].distribuido_porta, message);
             json_message = parseMessage(return_message);
         }
     }
@@ -148,17 +169,18 @@ void seleciona_cor(int estado) {
 
 void apresenta_info() {
     attron(COLOR_PAIR(DEFAULT));
-    mvprintw(0, 0, "------------- Informações %dº andar -------------", andar_atual + 1);
+    mvprintw(0, 0, "------------- Informações %s -------------", andares[andar_atual]);
     attroff(COLOR_PAIR(DEFAULT));
 
     attron(COLOR_PAIR(BLUE));
-    mvprintw(1, 0, "Pessoas no predio: %d", qntd_pessoas);
+    mvprintw(1, 0, "Pessoas no prédio: %d", pessoas_predio);
+    mvprintw(1, 20, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
     attroff(COLOR_PAIR(BLUE));
 }
 
 void menu_comandos() {
     attroff(COLOR_PAIR(GREEN));
-    mvprintw(5, 0, "------------- COMANDOS -------------");
+    mvprintw(5, 0, "------------- COMANDOS ----------------------");
 
     seleciona_cor(estados_sensores[andar_atual].lampada1);
     mvprintw(6, 0, "1 - Lampada Sala 1");
@@ -172,7 +194,7 @@ void menu_comandos() {
     seleciona_cor(estados_sensores[andar_atual].ar_cond);
     mvprintw(6, 30, "4 - Ar Condicionado");
 
-    if (estados_sensores[andar_atual].distribuido_porta == 10151) {
+    if (strcmp(andares[andar_atual], "Térreo") == 0) {
         seleciona_cor(estados_sensores[andar_atual].aspersor);
         mvprintw(7, 30, "5 -  Aspersor");
         seleciona_cor(alarme);

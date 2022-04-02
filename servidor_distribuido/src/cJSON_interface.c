@@ -50,6 +50,7 @@ int parse(char* filename) {
         return -1;
     }
 
+    json_data.nome = cJSON_GetObjectItem(json, "nome")->valuestring;
     json_data.ip_servidor_central = cJSON_GetObjectItem(json, "ip_servidor_central")->valuestring;
     json_data.porta_servidor_central = cJSON_GetObjectItem(json, "porta_servidor_central")->valueint;
     json_data.ip_servidor_distribuido = cJSON_GetObjectItem(json, "ip_servidor_distribuido")->valuestring;
@@ -133,6 +134,18 @@ cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido)
 
     return estados_json;
 }
+
+cJSON* buildJsonToName(char* name) {
+    cJSON* json_name = cJSON_CreateObject();
+    cJSON* nome = NULL;
+
+    nome = cJSON_CreateString(name);
+    cJSON_AddItemToObject(json_name, "nome", nome);
+
+
+    return json_name;
+}
+
 
 
 JSONData getJSONData() {

@@ -44,6 +44,11 @@ char* buildMessage(char* name, int num, int comand) {
     return message;
 }
 
+char* getFloorName(cJSON* cjson) {
+    char* message = cJSON_GetObjectItem(cjson, "nome")->valuestring;
+    return message;
+}
+
 JSONMessage parseMessage(char* message) {
     cJSON* json;
     JSONMessage data;
