@@ -16,7 +16,6 @@
 #define BLUE 3
 #define DEFAULT 4
 
-
 cJSON* json;
 JSONData* estados_sensores;
 
@@ -53,19 +52,48 @@ void atualiza_andar(JSONData json_data) {
     }
 }
 
+int  verifica_andar(JSONData json_data) {
+    for (int i = 0; i < qntd_andares; i++) {
+        if (estados_sensores[i].distribuido_porta == json_data.distribuido_porta) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void trata_retorno(JSONMessage mensagem) {
+    if (strcmp("erro", mensagem.sensor) == 0) {
+        attron(COLOR_PAIR(RED));
+        mvprintw(15, 50, "Não foi possível comunicar com o servidor distribuído");
+        attroff(COLOR_PAIR(RED));
+    }
+    else {
+        attron(COLOR_PAIR(GREEN));
+        if (mensagem.comand == 1)
+            mvprintw(15, 50, "ligando %s . . .", mensagem.sensor);
+        else
+            mvprintw(15, 50, "desligando ligando %s . . .", mensagem.sensor);
+
+        attroff(COLOR_PAIR(RED));
+    }
+}
+
+
+
 void* servidor_escuta(void* args) {
     unsigned short porta = *(unsigned short*)args;
     JSONData info;
 
     int estado_anterior_entrada = 0;
     int estado_anterior_saida = 0;
+    int andar_json;
 
     inicializaEscuta(porta);
 
     while (1) {
         json = obterMensagem();
         info = parseJson(json);
-
         if (qntd_andares == 0 || verifica_nova_conexao(info)) {
             cJSON* json_nome = obterMensagem();
             char* nome_andar = getFloorName(json_nome);
@@ -80,30 +108,30 @@ void* servidor_escuta(void* args) {
 
             qntd_andares++;
         }
+        andar_json = verifica_andar(info);
 
-        estado_anterior_entrada = estados_sensores[andar_atual].estado_entrada;
-        estado_anterior_saida = estados_sensores[andar_atual].estado_saida;
+        estado_anterior_entrada = estados_sensores[andar_json].estado_entrada;
+        estado_anterior_saida = estados_sensores[andar_json].estado_saida;
 
-        if (strcmp(andares[andar_atual], "Térreo") == 0) {
+        if (strcmp(andares[andar_json], "Térreo") == 0) {
             if (info.estado_entrada == 1 && estado_anterior_entrada == 0)
                 pessoas_predio++;
             if (info.estado_saida == 1 && estado_anterior_saida == 0)
                 pessoas_predio--;
-
-            int soma = 0;
-            for (int i = 0; i < qntd_andares; i++) {
-                if (strcmp(andares[i], "Térreo") != 0)
-                    soma += qntd_pessoas[i];
-            }
-            if (qntd_andares > 1)
-                qntd_pessoas[andar_atual] = soma;
         }
         else {
             if (info.estado_entrada == 1 && estado_anterior_entrada == 0)
-                qntd_pessoas[andar_atual]++;
+                qntd_pessoas[andar_json]++;
             if (info.estado_saida == 1 && estado_anterior_saida == 0)
-                qntd_pessoas[andar_atual]--;
+                qntd_pessoas[andar_json]--;
         }
+
+        int soma = 0;
+        for (int i = 0; i < qntd_andares; i++) {
+            if (strcmp(andares[i], "Térreo") != 0)
+                soma += qntd_pessoas[i];
+        }
+        qntd_pessoas[0] = pessoas_predio - soma;
 
         atualiza_andar(info);
     }
@@ -153,6 +181,7 @@ void* aguarda_comando_usuario(void* args) {
             char* return_message;
             return_message = envia("192.168.0.38", estados_sensores[andar_atual].distribuido_porta, message);
             json_message = parseMessage(return_message);
+            trata_retorno(json_message);
         }
     }
 }
@@ -174,7 +203,7 @@ void apresenta_info() {
 
     attron(COLOR_PAIR(BLUE));
     mvprintw(1, 0, "Pessoas no prédio: %d", pessoas_predio);
-    mvprintw(1, 20, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
+    mvprintw(2, 0, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
     attroff(COLOR_PAIR(BLUE));
 }
 

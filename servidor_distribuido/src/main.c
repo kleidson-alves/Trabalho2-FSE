@@ -106,7 +106,7 @@ void* observa_sensores(void* args) {
 
     while (1) {
 
-        if (cont % 10 == 0) {
+        if (cont % 9 == 0) {
             cont = 0;
             estados = carrega_estados();
         }
@@ -116,7 +116,6 @@ void* observa_sensores(void* args) {
 
             estados.estado_entrada = read_sensor_value(sensor_entrada);
             estados.estado_saida = read_sensor_value(sensor_saida);
-
         }
         if (comparaEstados(estados, estados_anteriores))
             enviaJson(estados);

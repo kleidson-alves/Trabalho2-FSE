@@ -16,6 +16,7 @@ char* envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
 
     int bytesRecebidos;
     int totalBytesRecebidos;
+    char* mensagemRetorno;
 
     // Criar Socket
     if ((clienteSocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -30,7 +31,8 @@ char* envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
     // Connect
     if (connect(clienteSocket, (struct sockaddr*)&servidorAddr,
         sizeof(servidorAddr)) < 0)
-        printf("Erro no connect()\n");
+        mensagemRetorno = buildMessage("erro", -1, -1);
+
 
     tamanhoMensagem = strlen(mensagem);
 
@@ -38,12 +40,11 @@ char* envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
         printf("Erro no envio: numero de bytes enviados diferente do esperado\n");
 
     totalBytesRecebidos = 0;
-    char* mensagemRetorno;
     int erro = 0;
     while (totalBytesRecebidos < tamanhoMensagem) {
         if ((bytesRecebidos = recv(clienteSocket, buffer, 300 - 1, 0)) <= 0) {
             printf("Não recebeu o total de bytes enviados\n");
-            mensagemRetorno = buildMessage("nenhum", -1, -1);
+            mensagemRetorno = buildMessage("erro", -1, -1);
             erro = 1;
         }
         totalBytesRecebidos += bytesRecebidos;
