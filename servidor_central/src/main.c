@@ -10,7 +10,7 @@
 #include "cliente_tcp.h"
 #include "cJSON.h"
 #include "cJSON_interface.h"
-
+#include "alarme.h"
 
 #define RED 1
 #define GREEN 2
@@ -23,11 +23,10 @@ pthread_t t1, thread_menu;
 
 char** andares;
 int* qntd_pessoas;
-int pessoas_predio = 0;
 int terreo;
+int pessoas_predio = 0;
 int qntd_andares = 0;
 int andar_atual = 0;
-int alarme = 0;
 
 int liga_desliga(int estado) {
     if (estado == 1)
@@ -82,6 +81,13 @@ void trata_retorno(JSONMessage mensagem) {
     }
 }
 
+void envia_mensagem(char* mensagem, unsigned short porta) {
+    JSONMessage mensagem_json;
+    char* mensgaem_retorno;
+    mensgaem_retorno = envia("192.168.0.38", estados_sensores[andar_atual].distribuido_porta, mensagem);
+    mensagem_json = parseMessage(mensgaem_retorno);
+    trata_retorno(mensagem_json);
+}
 
 
 void* servidor_escuta(void* args) {
@@ -137,6 +143,12 @@ void* servidor_escuta(void* args) {
         }
         qntd_pessoas[terreo] = pessoas_predio - soma;
 
+        if (info.fumaca != estados_sensores[andar_atual].fumaca) {
+            char* mensagem;
+            mensagem = buildMessage("aspersor", 1, controla_alarme_fumaca(info.fumaca));
+            envia_mensagem(mensagem, estados_sensores[terreo].distribuido_porta);
+        }
+
         atualiza_andar(info);
     }
 
@@ -165,7 +177,7 @@ void* aguarda_comando_usuario(void* args) {
             message = buildMessage("ar-condicionado", 1, liga_desliga(estados_sensores[andar_atual].ar_cond));
             break;
         case '5':
-            message = buildMessage("aspersor", 1, liga_desliga(estados_sensores[andar_atual].aspersor));
+            controla_alarme_seguranca(estados_sensores, qntd_andares);
             break;
 
         case 'q':
@@ -189,16 +201,10 @@ void* aguarda_comando_usuario(void* args) {
 
         }
         if (message != NULL) {
-            JSONMessage json_message;
-            char* return_message;
-            return_message = envia("192.168.0.38", estados_sensores[andar_atual].distribuido_porta, message);
-            json_message = parseMessage(return_message);
-            trata_retorno(json_message);
+            envia_mensagem(message, estados_sensores[andar_atual].distribuido_porta);
         }
     }
 }
-
-
 
 void seleciona_cor(int estado) {
     if (estado == 1) {
@@ -266,10 +272,8 @@ void menu_comandos() {
     mvprintw(row_init + 2, column_ident, "[4] Ar Condicionado");
 
     if (strcmp(andares[andar_atual], "Térreo") == 0) {
-        seleciona_cor(estados_sensores[andar_atual].aspersor);
-        mvprintw(row_init + 3, column_ident, "[5] Aspersor");
-        seleciona_cor(alarme);
-        mvprintw(row_init + 4, column_ident, "[6] Alarme\n");
+        seleciona_cor(obter_estado_alarme());
+        mvprintw(row_init + 3, column_ident, "[5] Alarme\n");
     }
 
     attroff(COLOR_PAIR(GREEN));
@@ -279,7 +283,6 @@ void menu_comandos() {
 
     mvprintw(row_init, 0, "----------------- COMANDOS ESPECIAIS -----------------");
     mvprintw(row_init + 2, column_init, "[q] sair");
-
     mvprintw(row_init + 3, column_init, "[l] ligar todos os sensores");
     mvprintw(row_init + 4, column_init, "[d] desligar todos os sensores");
 
@@ -327,6 +330,7 @@ int main(void) {
         clear();
         apresenta_info();
         menu_comandos();
+        dispara();
         refresh();
         sleep(1);
 

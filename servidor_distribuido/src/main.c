@@ -119,7 +119,8 @@ void envia_estados_iniciais() {
 
 void altera_todos_sensore(int value) {
     for (int i = 0; i < info.qntd_outputs; i++) {
-        write_sensor_value(info.outputs[i].gpio, value);
+        if (strcmp(info.outputs[i].type, "aspersor") != 0)
+            write_sensor_value(info.outputs[i].gpio, value);
     }
 }
 
@@ -201,7 +202,7 @@ int main(int argc, char** argv) {
         json = obterMensagem();
         solicitacao = parseMessage(json);
         int gpio = encontra_gpio(info.outputs, info.qntd_outputs, solicitacao.sensor, solicitacao.numero);
-        printf("%d\n", gpio);
+
         if (gpio != -1)
             write_sensor_value(gpio, solicitacao.comand);
         else
