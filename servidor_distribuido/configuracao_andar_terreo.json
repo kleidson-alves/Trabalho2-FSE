@@ -1,8 +1,8 @@
 {
     "ip_servidor_central": "192.168.0.53",
-    "porta_servidor_central": 10051,
+    "porta_servidor_central": 10061,
     "ip_servidor_distribuido": "192.168.0.52",
-    "porta_servidor_distribuido": 10151,
+    "porta_servidor_distribuido": 10161,
     "nome": "Térreo",
     "outputs": [
         {
@@ -68,9 +68,9 @@
             "gpio": 19
         }
     ],
-    "sensor_temepratura": [
+    "sensor_temperatura": [
         {
-            "model": "dth22",
+            "type": "dht22",
             "tag": "Sensor de Temperatura e Umidade",
             "gpio": 20
         }

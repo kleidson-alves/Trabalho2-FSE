@@ -41,10 +41,12 @@ typedef struct StateSensor {
     int porta;
     int ar_cond;
     int aspersor;
+    float temp;
+    float umidade;
 }StateSensor;
 
 void printIOData(IO g);
-void buildStructList(IO* result, cJSON* list, char type);
+void buildStructList(IO* result, cJSON* list);
 cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido);
 cJSON* buildJsonToName(char* name);
 int parse(char* filename);

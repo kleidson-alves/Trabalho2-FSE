@@ -12,7 +12,7 @@ void printIOData(IO g) {
     printf("type: %s || tag: %s || gpio: %d\n", g.type, g.tag, g.gpio);
 }
 
-void buildStructList(IO* result, cJSON* list, char type) {
+void buildStructList(IO* result, cJSON* list) {
 
     int size_list = cJSON_GetArraySize(list);
 
@@ -21,10 +21,9 @@ void buildStructList(IO* result, cJSON* list, char type) {
 
         result[i].gpio = cJSON_GetObjectItem(item, "gpio")->valueint;
         result[i].tag = cJSON_GetObjectItem(item, "tag")->valuestring;
-        if (type == 't')
-            result[i].type = cJSON_GetObjectItem(item, "type")->valuestring;
-        else
-            result[i].type = cJSON_GetObjectItem(item, "model")->valuestring;
+
+        result[i].type = cJSON_GetObjectItem(item, "type")->valuestring;
+
     }
 }
 
@@ -69,9 +68,9 @@ int parse(char* filename) {
     json_data.inputs = (IO*)malloc(json_data.qntd_inputs * sizeof(IO));
     json_data.sensores = (IO*)malloc(tam_lista_sensores * sizeof(IO));
 
-    buildStructList(json_data.outputs, lista_outputs, 't');
-    buildStructList(json_data.inputs, lista_inputs, 't');
-    buildStructList(json_data.sensores, lista_sensores, 't');
+    buildStructList(json_data.outputs, lista_outputs);
+    buildStructList(json_data.inputs, lista_inputs);
+    buildStructList(json_data.sensores, lista_sensores);
 
     return 0;
 }
@@ -100,6 +99,8 @@ cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido)
     cJSON* ar_cond = NULL;
     cJSON* aspersor = NULL;
     cJSON* distribuido_porta = NULL;
+    cJSON* temperatura = NULL;
+    cJSON* umidade = NULL;
 
     entrada = cJSON_CreateNumber(estados.estado_entrada);
     saida = cJSON_CreateNumber(estados.estado_saida);
@@ -113,6 +114,8 @@ cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido)
     lampada_corredor = cJSON_CreateNumber(estados.lampada_corredor);
     ar_cond = cJSON_CreateNumber(estados.ar_cond);
     aspersor = cJSON_CreateNumber(estados.aspersor);
+    temperatura = cJSON_CreateNumber(estados.temp);
+    umidade = cJSON_CreateNumber(estados.umidade);
 
 
     distribuido_porta = cJSON_CreateNumber(porta_servidor_distribuido);
@@ -131,6 +134,8 @@ cJSON* buildJson(StateSensor estados, unsigned short porta_servidor_distribuido)
     cJSON_AddItemToObject(estados_json, "ar-condicionado", ar_cond);
     cJSON_AddItemToObject(estados_json, "aspersor", aspersor);
     cJSON_AddItemToObject(estados_json, "porta_servidor_distribuido", distribuido_porta);
+    cJSON_AddItemToObject(estados_json, "temperatura", temperatura);
+    cJSON_AddItemToObject(estados_json, "umidade", umidade);
 
     return estados_json;
 }

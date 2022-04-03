@@ -30,8 +30,10 @@ char* envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
 
     // Connect
     if (connect(clienteSocket, (struct sockaddr*)&servidorAddr,
-        sizeof(servidorAddr)) < 0)
-        mensagemRetorno = buildMessage("erro", -1, -1);
+        sizeof(servidorAddr)) < 0) {
+        close(clienteSocket);
+        return buildMessage("erro", -1, -1);
+    }
 
 
     tamanhoMensagem = strlen(mensagem);

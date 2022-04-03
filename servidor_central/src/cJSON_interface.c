@@ -22,6 +22,8 @@ JSONData parseJson(cJSON* cjson) {
     json_data.lampada_corredor = cJSON_GetObjectItem(cjson, "lampada_corredor")->valueint;
     json_data.ar_cond = cJSON_GetObjectItem(cjson, "ar-condicionado")->valueint;
     json_data.aspersor = cJSON_GetObjectItem(cjson, "aspersor")->valueint;
+    json_data.temp = cJSON_GetObjectItem(cjson, "temperatura")->valuedouble;
+    json_data.umidade = cJSON_GetObjectItem(cjson, "umidade")->valuedouble;
 
     return json_data;
 }

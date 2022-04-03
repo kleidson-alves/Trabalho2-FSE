@@ -4,14 +4,19 @@
 #include <ncurses.h>
 #include <pthread.h>
 #include <string.h>
+#include <signal.h>
+#include <stdlib.h>
 #include "dht22.h"
 
 #include "cJSON_interface.h"
 #include "cliente_tcp.h"
 #include "servidor_tcp.h"
 
+float temp, umidade, temp_ant, umidade_ant;
+int altera;
 JSONData info;
-StateSensor estados_anteriores;
+pthread_t thread_cliente, thread_dht22;
+
 
 int encontra_gpio(IO* listaIO, int tamanho_lista, char* nome_sensor, int numero_sensor) {
     int num = 1;
@@ -35,20 +40,23 @@ int comparaEstados(StateSensor estado1, StateSensor estado2) {
     if (estado1.estado_entrada != estado2.estado_entrada || estado1.estado_saida != estado2.estado_saida)
         return 1;
 
-    if (estado1.fumaca != estado2.fumaca || estado1.porta != estado2.porta || estado1.presenca != estado2.presenca)
+    if (estado1.fumaca != estado2.fumaca || estado1.presenca != estado2.presenca || estado1.porta != estado2.porta)
         return 1;
 
     if (estado1.janela01 != estado2.janela01 || estado1.janela02 != estado2.janela02)
         return 1;
 
-    if (estado1.ar_cond != estado2.ar_cond || estado1.fumaca != estado2.fumaca || estado1.presenca != estado2.presenca)
-        return 1;
-
     if (estado1.lampada1 != estado2.lampada1 || estado1.lampada2 != estado2.lampada2 || estado1.lampada_corredor != estado2.lampada_corredor)
         return 1;
 
-    if (estado1.aspersor != estado2.aspersor || estado1.porta != estado2.porta)
+    if (estado1.aspersor != estado2.aspersor || estado1.ar_cond != estado2.ar_cond)
         return 1;
+
+    if (temp != temp_ant || umidade != umidade_ant) {
+        temp_ant = temp;
+        umidade_ant = umidade;
+        return 1;
+    }
 
     return 0;
 }
@@ -80,6 +88,8 @@ StateSensor carrega_estados() {
     estados.lampada2 = read_sensor_value(sensor_lampada2);
     estados.lampada_corredor = read_sensor_value(sensor_lampada_corredor);
 
+    estados.temp = temp;
+    estados.umidade = umidade;
     if (sensor_porta != -1) {
         estados.porta = read_sensor_value(sensor_porta);
         estados.aspersor = read_sensor_value(sensor_aspersor);
@@ -93,9 +103,9 @@ StateSensor carrega_estados() {
 }
 
 void envia_estados_iniciais() {
-
-    memset(&estados_anteriores, 0, sizeof(estados_anteriores));
-    cJSON* json = buildJson(estados_anteriores, info.porta_servidor_distribuido);
+    StateSensor estados_iniciais;
+    memset(&estados_iniciais, 0, sizeof(estados_iniciais));
+    cJSON* json = buildJson(estados_iniciais, info.porta_servidor_distribuido);
     char* mensagem = cJSON_Print(json);
 
     char* nome_andar = cJSON_Print(buildJsonToName(info.nome));
@@ -107,11 +117,17 @@ void envia_estados_iniciais() {
     envia(info.ip_servidor_central, info.porta_servidor_central, nome_andar);
 }
 
+void altera_todos_sensore(int value) {
+    for (int i = 0; i < info.qntd_outputs; i++) {
+        write_sensor_value(info.outputs[i].gpio, value);
+    }
+}
+
 
 void* observa_sensores(void* args) {
     int cont = 0;
-    StateSensor estados = *(StateSensor*)args;
-    estados = estados_anteriores;
+    StateSensor estados_anteriores = *(StateSensor*)args;
+    StateSensor estados;
 
     while (1) {
 
@@ -135,6 +151,26 @@ void* observa_sensores(void* args) {
     }
 }
 
+void* obter_temp_umidade(void* args) {
+    dht22Data dados_dht22;
+    temp_ant = 0;
+    umidade_ant = 0;
+    int sensor_dht22 = encontra_gpio(info.sensores, 1, "dht22", 1);
+    while (1) {
+        dados_dht22 = get_dht_data(sensor_dht22);
+        temp = dados_dht22.temp;
+        umidade = dados_dht22.umi;
+    }
+
+}
+
+void trata_sinal(int signum) {
+    pthread_cancel(thread_cliente);
+    pthread_cancel(thread_dht22);
+    exit(0);
+}
+
+
 int main(int argc, char** argv) {
 
     if (argc != 2) {
@@ -145,25 +181,32 @@ int main(int argc, char** argv) {
     if (parse(argv[1]) == -1)
         return 0;
 
+    signal(SIGINT, trata_sinal);
+
     info = getJSONData();
     initWiringPi();
 
-    pthread_t thread;
     StateSensor args;
     cJSON* json;
     JSONMessage solicitacao;
 
+
     envia_estados_iniciais();
 
-    pthread_create(&(thread), NULL, &observa_sensores, &args);
-
+    pthread_create(&(thread_cliente), NULL, &observa_sensores, &args);
+    pthread_create(&(thread_dht22), NULL, &obter_temp_umidade, &args);
     inicializaEscuta(info.porta_servidor_distribuido);
 
     while (1) {
         json = obterMensagem();
         solicitacao = parseMessage(json);
         int gpio = encontra_gpio(info.outputs, info.qntd_outputs, solicitacao.sensor, solicitacao.numero);
-        write_sensor_value(gpio, solicitacao.comand);
+        printf("%d\n", gpio);
+        if (gpio != -1)
+            write_sensor_value(gpio, solicitacao.comand);
+        else
+            altera_todos_sensore(solicitacao.comand);
+
     }
 
     finalizaEscuta();

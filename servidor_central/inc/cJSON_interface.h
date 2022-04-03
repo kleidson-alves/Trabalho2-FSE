@@ -30,6 +30,8 @@ typedef struct JSONData {
     int ar_cond;
     int aspersor;
     unsigned short distribuido_porta;
+    float umidade;
+    float temp;
 } JSONData;
 
 JSONData parseJson(cJSON* json);

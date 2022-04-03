@@ -89,8 +89,9 @@ void write_sensor_value(int8_t pin, int value) {
 }
 
 
-float get_dht_data(char mode, int8_t pin) {
+dht22Data get_dht_data(int8_t pin) {
     int done = 0;
+    dht22Data data;
     dht_pin = pin;
 
     while (!done) {
@@ -98,14 +99,8 @@ float get_dht_data(char mode, int8_t pin) {
         delay(WAIT_TIME);
     }
 
-    if (mode == 'c') {
-        return temp_cels;
-    }
-    else if (mode == 'f') {
-        return  temp_fahr;
-    }
-    else
-        return humidity;
+    data.temp = temp_cels;
+    data.umi = humidity;
+    return data;
 
-    return(0);
 }

@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "servidor_tcp.h"
 #include "cliente_tcp.h"
@@ -18,6 +19,7 @@
 
 cJSON* json;
 JSONData* estados_sensores;
+pthread_t t1, thread_menu;
 
 char** andares;
 int* qntd_pessoas;
@@ -74,7 +76,7 @@ void trata_retorno(JSONMessage mensagem) {
         if (mensagem.comand == 1)
             mvprintw(15, 50, "ligando %s . . .", mensagem.sensor);
         else
-            mvprintw(15, 50, "desligando ligando %s . . .", mensagem.sensor);
+            mvprintw(15, 50, "desligando %s . . .", mensagem.sensor);
 
         attroff(COLOR_PAIR(RED));
     }
@@ -166,6 +168,18 @@ void* aguarda_comando_usuario(void* args) {
             message = buildMessage("aspersor", 1, liga_desliga(estados_sensores[andar_atual].aspersor));
             break;
 
+        case 'q':
+            *exit = 1;
+            break;
+
+        case 'l':
+            message = buildMessage("todos", 1, 1);
+            break;
+
+        case 'd':
+            message = buildMessage("todos", 1, 0);
+            break;
+
         case ' ':
             i++;
             if (i == qntd_andares)
@@ -173,9 +187,6 @@ void* aguarda_comando_usuario(void* args) {
             andar_atual = i;
             break;
 
-        case 'q':
-            *exit = 1;
-            break;
         }
         if (message != NULL) {
             JSONMessage json_message;
@@ -199,12 +210,23 @@ void seleciona_cor(int estado) {
 
 void apresenta_info() {
     attron(COLOR_PAIR(DEFAULT));
-    mvprintw(0, 0, "------------- Informações %s -------------", andares[andar_atual]);
+    mvprintw(0, 0, "---------------- Informações %s ----------------", andares[andar_atual]);
     attroff(COLOR_PAIR(DEFAULT));
 
     attron(COLOR_PAIR(BLUE));
     mvprintw(2, 0, "Pessoas no prédio: %d", pessoas_predio);
     mvprintw(3, 0, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
+    if (estados_sensores[andar_atual].temp == 0) {
+        attron(COLOR_PAIR(DEFAULT));
+        mvprintw(4, 0, "Carregando temperatura e umidade . . .");
+        attroff(COLOR_PAIR(DEFAULT));
+
+    }
+    else {
+
+        mvprintw(4, 0, "Umidade: %.1lf%%", estados_sensores[andar_atual].umidade);
+        mvprintw(5, 0, "Temperatura: %.1lf", estados_sensores[andar_atual].temp);
+    }
     attroff(COLOR_PAIR(BLUE));
 
     seleciona_cor(estados_sensores[andar_atual].presenca);
@@ -227,41 +249,59 @@ void apresenta_info() {
 void menu_comandos() {
     attroff(COLOR_PAIR(GREEN));
     int row_init = 8;
-    mvprintw(row_init, 0, "-------------------- COMANDOS --------------------");
+    int column_init = 0;
+    int column_ident = 30;
+    mvprintw(row_init, column_init, "-------------------- COMANDOS --------------------");
 
     seleciona_cor(estados_sensores[andar_atual].lampada1);
-    mvprintw(row_init + 2, 0, "[1] Lampada Sala 1");
+    mvprintw(row_init + 2, column_init, "[1] Lampada Sala 1");
 
     seleciona_cor(estados_sensores[andar_atual].lampada2);
-    mvprintw(row_init + 3, 0, "[2] Lampada  Sala 2");
+    mvprintw(row_init + 3, column_init, "[2] Lampada  Sala 2");
 
     seleciona_cor(estados_sensores[andar_atual].lampada_corredor);
-    mvprintw(row_init + 4, 0, "[3] Lampada Corredor");
+    mvprintw(row_init + 4, column_init, "[3] Lampada Corredor");
 
     seleciona_cor(estados_sensores[andar_atual].ar_cond);
-    mvprintw(row_init + 2, 30, "[4] Ar Condicionado");
+    mvprintw(row_init + 2, column_ident, "[4] Ar Condicionado");
 
     if (strcmp(andares[andar_atual], "Térreo") == 0) {
         seleciona_cor(estados_sensores[andar_atual].aspersor);
-        mvprintw(row_init + 3, 30, "[5] Aspersor");
+        mvprintw(row_init + 3, column_ident, "[5] Aspersor");
         seleciona_cor(alarme);
-        mvprintw(row_init + 4, 30, "[6] Alarme\n");
+        mvprintw(row_init + 4, column_ident, "[6] Alarme\n");
     }
 
     attroff(COLOR_PAIR(GREEN));
     attroff(COLOR_PAIR(RED));
 
-    if (qntd_andares > 0)
+    row_init += 6;
+
+    mvprintw(row_init, 0, "----------------- COMANDOS ESPECIAIS -----------------");
+    mvprintw(row_init + 2, column_init, "[q] sair");
+
+    mvprintw(row_init + 3, column_init, "[l] ligar todos os sensores");
+    mvprintw(row_init + 4, column_init, "[d] desligar todos os sensores");
+
+    if (qntd_andares > 1)
         mvprintw(row_init + 10, 10, "Pressione espaço para trocar de andar");
 
 }
 
+void trata_sinal(int sinal) {
+    endwin();
+    pthread_cancel(thread_menu);
+    pthread_cancel(t1);
+    exit(0);
+}
+
 
 int main(void) {
-    pthread_t t1, thread_menu;
 
-    unsigned short porta = 10051;
+    unsigned short porta = 10061;
     int exit = 0;
+
+    signal(SIGINT, trata_sinal);
 
     initscr();
     curs_set(0);
@@ -293,6 +333,6 @@ int main(void) {
         if (exit)
             break;;
     }
-    endwin();
+    trata_sinal(exit);
     return 0;
 }
