@@ -92,6 +92,19 @@ void transmissao_predio(int comand) {
         envia_mensagem(message, estados_sensores[i].distribuido_porta);
 }
 
+void controla_aspersor() {
+    int estado_geral_fumaca = 0;
+    for (int i = 0; i < qntd_andares; i++) {
+        if (estados_sensores[i].fumaca) {
+            estado_geral_fumaca = 1;
+            break;
+        }
+    }
+    char* mensagem;
+    mensagem = buildMessage("aspersor", 1, controla_alarme_fumaca(estado_geral_fumaca));
+    envia_mensagem(mensagem, estados_sensores[terreo].distribuido_porta);
+}
+
 
 void* servidor_escuta(void* args) {
     unsigned short porta = *(unsigned short*)args;
@@ -145,14 +158,8 @@ void* servidor_escuta(void* args) {
                 soma += qntd_pessoas[i];
         }
         qntd_pessoas[terreo] = pessoas_predio - soma;
-
-        if (info.fumaca != estados_sensores[andar_atual].fumaca) {
-            char* mensagem;
-            mensagem = buildMessage("aspersor", 1, controla_alarme_fumaca(info.fumaca));
-            envia_mensagem(mensagem, estados_sensores[terreo].distribuido_porta);
-        }
-
         atualiza_andar(info);
+        controla_aspersor();
     }
 
     finalizaEscuta();
