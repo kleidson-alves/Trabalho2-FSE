@@ -9,7 +9,7 @@
 #include "cJSON_interface.h"
 
 #define LIGA 1
-#define DESLIGA 1
+#define DESLIGA 0
 
 
 void altera_estado_alarme(char* nome, int estado);

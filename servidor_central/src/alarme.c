@@ -5,7 +5,8 @@ int alarme_fumaca = 0;
 
 void dispara() {
     if (alarme_seguranca || alarme_fumaca) {
-        mvprintw(15, 50, "Alarme disparado");
+        attron(COLOR_PAIR(1));
+        mvprintw(0, 30, "Alarme disparado");
         beep();
     }
 }

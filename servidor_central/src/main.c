@@ -11,11 +11,8 @@
 #include "cJSON.h"
 #include "cJSON_interface.h"
 #include "alarme.h"
+#include "menu_interface.h"
 
-#define RED 1
-#define GREEN 2
-#define BLUE 3
-#define DEFAULT 4
 
 cJSON* json;
 JSONData* estados_sensores;
@@ -67,17 +64,17 @@ int  verifica_andar(JSONData json_data) {
 void trata_retorno(JSONMessage mensagem) {
     if (strcmp("erro", mensagem.sensor) == 0) {
         attron(COLOR_PAIR(RED));
-        mvprintw(15, 50, "Não foi possível comunicar com o servidor distribuído");
+        mvprintw(0, 30, "Não foi possível comunicar com o servidor distribuído");
         attroff(COLOR_PAIR(RED));
     }
     else {
         attron(COLOR_PAIR(GREEN));
         if (mensagem.comand == 1)
-            mvprintw(15, 50, "ligando %s . . .", mensagem.sensor);
+            mvprintw(0, 30, "ligando %s . . .", mensagem.sensor);
         else
-            mvprintw(15, 50, "desligando %s . . .", mensagem.sensor);
+            mvprintw(0, 50, "desligando %s . . .", mensagem.sensor);
 
-        attroff(COLOR_PAIR(RED));
+        attroff(COLOR_PAIR(GREEN));
     }
 }
 
@@ -87,6 +84,12 @@ void envia_mensagem(char* mensagem, unsigned short porta) {
     mensgaem_retorno = envia("192.168.0.38", estados_sensores[andar_atual].distribuido_porta, mensagem);
     mensagem_json = parseMessage(mensgaem_retorno);
     trata_retorno(mensagem_json);
+}
+
+void transmissao_predio(int comand) {
+    char* message = buildMessage("todos", 1, 1);
+    for (int i = 0; i < qntd_andares; i++)
+        envia_mensagem(message, estados_sensores[i].distribuido_porta);
 }
 
 
@@ -158,7 +161,7 @@ void* servidor_escuta(void* args) {
 void* aguarda_comando_usuario(void* args) {
     int* exit = (int*)args;
     char* message;
-    int i = andar_atual;
+    int altera_andar = andar_atual;
 
     while (1) {
         char entrada_usuario = getch();
@@ -185,18 +188,24 @@ void* aguarda_comando_usuario(void* args) {
             break;
 
         case 'l':
-            message = buildMessage("todos", 1, 1);
+            message = buildMessage("todos", 1, LIGA);
             break;
 
         case 'd':
-            message = buildMessage("todos", 1, 0);
+            message = buildMessage("todos", 1, DESLIGA);
+            break;
+        case 'o':
+            transmissao_predio(LIGA);
+            break;
+        case 'i':
+            transmissao_predio(DESLIGA);
             break;
 
         case ' ':
-            i++;
-            if (i == qntd_andares)
-                i = 0;
-            andar_atual = i;
+            altera_andar++;
+            if (altera_andar == qntd_andares)
+                altera_andar = 0;
+            andar_atual = altera_andar;
             break;
 
         }
@@ -206,90 +215,102 @@ void* aguarda_comando_usuario(void* args) {
     }
 }
 
-void seleciona_cor(int estado) {
-    if (estado == 1) {
-        attron(COLOR_PAIR(GREEN));
-    }
-    else
-        attron(COLOR_PAIR(RED));
-}
+// void seleciona_cor(int estado) {
+//     if (estado == 1) {
+//         attron(COLOR_PAIR(GREEN));
+//     }
+//     else
+//         attron(COLOR_PAIR(RED));
+// }
 
-void apresenta_info() {
-    attron(COLOR_PAIR(DEFAULT));
-    mvprintw(0, 0, "---------------- Informações %s ----------------", andares[andar_atual]);
-    attroff(COLOR_PAIR(DEFAULT));
+// void apresenta_info_geral() {
+//     int row = 1;
+//     attron(COLOR_PAIR(DEFAULT));
 
-    attron(COLOR_PAIR(BLUE));
-    mvprintw(2, 0, "Pessoas no prédio: %d", pessoas_predio);
-    mvprintw(3, 0, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
-    if (estados_sensores[andar_atual].temp == 0) {
-        attron(COLOR_PAIR(DEFAULT));
-        mvprintw(4, 0, "Carregando temperatura e umidade . . .");
-        attroff(COLOR_PAIR(DEFAULT));
+//     mvprintw(0, 0, "Pessoas no prédio: %d", pessoas_predio);
+//     for (int i = 0; i < qntd_andares; i++)
+//         mvprintw(i + row, 0, "Pessoas no %s: %d", andares[i], qntd_pessoas[i]);
+//     attroff(COLOR_PAIR(DEFAULT));
 
-    }
-    else {
+// }
 
-        mvprintw(4, 0, "Umidade: %.1lf%%", estados_sensores[andar_atual].umidade);
-        mvprintw(5, 0, "Temperatura: %.1lf", estados_sensores[andar_atual].temp);
-    }
-    attroff(COLOR_PAIR(BLUE));
+// void apresenta_info() {
+//     int row_init = qntd_andares + 3;
+//     int ident_column = 30;
+//     attron(COLOR_PAIR(DEFAULT));
+//     mvprintw(row_init, 0, "---------------- Informações %s ----------------", andares[andar_atual]);
+//     attroff(COLOR_PAIR(DEFAULT));
 
-    seleciona_cor(estados_sensores[andar_atual].presenca);
-    mvprintw(2, 40, "Sensor de presença");
-    seleciona_cor(estados_sensores[andar_atual].fumaca);
-    mvprintw(3, 40, "Sensor de fumaça");
-    seleciona_cor(estados_sensores[andar_atual].janela01);
-    mvprintw(4, 40, "Janela 1");
-    seleciona_cor(estados_sensores[andar_atual].janela02);
-    mvprintw(5, 40, "Janela 2");
+//     attron(COLOR_PAIR(BLUE));
+//     mvprintw(row_init + 2, 0, "Pessoas no andar: %d", qntd_pessoas[andar_atual]);
 
-    if (strcmp(andares[andar_atual], "Térreo") == 0) {
-        seleciona_cor(estados_sensores[andar_atual].porta);
-        mvprintw(6, 40, "Porta de Entrada");
-    }
+//     if (estados_sensores[andar_atual].temp == 0) {
+//         attron(COLOR_PAIR(DEFAULT));
+//         mvprintw(row_init + 3, 0, "Carregando temperatura e umidade . . .");
+//         attroff(COLOR_PAIR(DEFAULT));
+//     }
+//     else {
+//         mvprintw(row_init + 3, 0, "Umidade: %.1lf%%", estados_sensores[andar_atual].umidade);
+//         mvprintw(row_init + 4, 0, "Temperatura: %.1lf", estados_sensores[andar_atual].temp);
+//     }
+//     attroff(COLOR_PAIR(BLUE));
 
+//     seleciona_cor(estados_sensores[andar_atual].presenca);
+//     mvprintw(row_init + 2, ident_column, "Sensor de presença");
+//     seleciona_cor(estados_sensores[andar_atual].fumaca);
+//     mvprintw(row_init + 3, ident_column, "Sensor de fumaça");
+//     seleciona_cor(estados_sensores[andar_atual].janela01);
+//     mvprintw(row_init + 4, ident_column, "Janela 1");
+//     seleciona_cor(estados_sensores[andar_atual].janela02);
+//     mvprintw(row_init + 5, ident_column, "Janela 2");
 
-}
+//     if (strcmp(andares[andar_atual], "Térreo") == 0) {
+//         seleciona_cor(estados_sensores[andar_atual].porta);
+//         mvprintw(row_init + 6, ident_column, "Porta de Entrada");
+//     }
+// }
 
-void menu_comandos() {
-    attroff(COLOR_PAIR(GREEN));
-    int row_init = 8;
-    int column_init = 0;
-    int column_ident = 30;
-    mvprintw(row_init, column_init, "-------------------- COMANDOS --------------------");
+// void menu_comandos() {
+//     attroff(COLOR_PAIR(GREEN));
+//     int row_init = qntd_andares + 12;
+//     int column_init = 0;
+//     int column_ident = 30;
+//     mvprintw(row_init, column_init, "-------------------- COMANDOS --------------------");
 
-    seleciona_cor(estados_sensores[andar_atual].lampada1);
-    mvprintw(row_init + 2, column_init, "[1] Lampada Sala 1");
+//     seleciona_cor(estados_sensores[andar_atual].lampada1);
+//     mvprintw(row_init + 2, column_init, "[1] Lâmpada Sala 1");
 
-    seleciona_cor(estados_sensores[andar_atual].lampada2);
-    mvprintw(row_init + 3, column_init, "[2] Lampada  Sala 2");
+//     seleciona_cor(estados_sensores[andar_atual].lampada2);
+//     mvprintw(row_init + 3, column_init, "[2] Lâmpada  Sala 2");
 
-    seleciona_cor(estados_sensores[andar_atual].lampada_corredor);
-    mvprintw(row_init + 4, column_init, "[3] Lampada Corredor");
+//     seleciona_cor(estados_sensores[andar_atual].lampada_corredor);
+//     mvprintw(row_init + 4, column_init, "[3] Lâmpada Corredor");
 
-    seleciona_cor(estados_sensores[andar_atual].ar_cond);
-    mvprintw(row_init + 2, column_ident, "[4] Ar Condicionado");
+//     seleciona_cor(estados_sensores[andar_atual].ar_cond);
+//     mvprintw(row_init + 2, column_ident, "[4] Ar Condicionado");
 
-    if (strcmp(andares[andar_atual], "Térreo") == 0) {
-        seleciona_cor(obter_estado_alarme());
-        mvprintw(row_init + 3, column_ident, "[5] Alarme\n");
-    }
+//     if (strcmp(andares[andar_atual], "Térreo") == 0) {
+//         seleciona_cor(obter_estado_alarme());
+//         mvprintw(row_init + 3, column_ident, "[5] Alarme\n");
+//     }
 
-    attroff(COLOR_PAIR(GREEN));
-    attroff(COLOR_PAIR(RED));
+//     attroff(COLOR_PAIR(GREEN));
+//     attroff(COLOR_PAIR(RED));
 
-    row_init += 6;
+//     row_init += 6;
 
-    mvprintw(row_init, 0, "----------------- COMANDOS ESPECIAIS -----------------");
-    mvprintw(row_init + 2, column_init, "[q] sair");
-    mvprintw(row_init + 3, column_init, "[l] ligar todos os sensores");
-    mvprintw(row_init + 4, column_init, "[d] desligar todos os sensores");
+//     mvprintw(row_init, 0, "-------------- COMANDOS ESPECIAIS --------------");
+//     mvprintw(row_init + 2, column_init, "[l] ligar todos os sensores do andar");
+//     mvprintw(row_init + 3, column_init, "[d] desligar todos os sensores do andar");
+//     mvprintw(row_init + 4, column_init, "[o] ligar todos os sensores do prédio");
+//     mvprintw(row_init + 5, column_init, "[i] desligar todos os sensores do prédio");
 
-    if (qntd_andares > 1)
-        mvprintw(row_init + 10, 10, "Pressione espaço para trocar de andar");
+//     mvprintw(row_init + 6, column_init, "[q] sair");
 
-}
+//     if (qntd_andares > 1)
+//         mvprintw(row_init + 10, 8, "Pressione espaço para trocar de andar");
+
+// }
 
 void trata_sinal(int sinal) {
     endwin();
@@ -311,14 +332,8 @@ int main(void) {
     noecho();
     start_color();
 
-    init_pair(DEFAULT, COLOR_WHITE, COLOR_BLACK);
-    init_pair(RED, COLOR_RED, COLOR_BLACK);
-    init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
-    init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
-
     pthread_create(&t1, NULL, servidor_escuta, &porta);
     pthread_create(&thread_menu, NULL, aguarda_comando_usuario, &exit);
-
 
     while (qntd_andares == 0) {
         mvprintw(1, 5, "Aguardando servidor distribuído");
@@ -328,8 +343,7 @@ int main(void) {
 
     while (1) {
         clear();
-        apresenta_info();
-        menu_comandos();
+        menu(estados_sensores, andares, qntd_pessoas, qntd_andares, pessoas_predio, andar_atual);
         dispara();
         refresh();
         sleep(1);
@@ -337,6 +351,7 @@ int main(void) {
         if (exit)
             break;;
     }
+
     trata_sinal(exit);
     return 0;
 }
