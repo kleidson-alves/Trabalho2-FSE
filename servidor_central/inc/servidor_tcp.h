@@ -7,4 +7,5 @@ void TrataClienteTCP(int socketCliente);
 void inicializaEscuta(unsigned short servidorPorta);
 cJSON* obterMensagem();
 void finalizaEscuta();
+void encerraServidor();
 #endif

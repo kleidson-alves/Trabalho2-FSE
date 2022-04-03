@@ -74,3 +74,8 @@ void finalizaEscuta() {
 
     close(servidorSocket);
 }
+
+void encerraServidor() {
+    close(socketCliente);
+    close(servidorSocket);
+}

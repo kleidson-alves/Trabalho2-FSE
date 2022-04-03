@@ -18,6 +18,14 @@ JSONData info;
 pthread_t thread_cliente, thread_dht22;
 
 
+void trata_sinal(int signum) {
+    encerraServidor();
+    pthread_cancel(thread_cliente);
+    pthread_cancel(thread_dht22);
+    exit(0);
+}
+
+
 int encontra_gpio(IO* listaIO, int tamanho_lista, char* nome_sensor, int numero_sensor) {
     int num = 1;
     for (int i = 0; i < tamanho_lista; i++) {
@@ -33,7 +41,12 @@ int encontra_gpio(IO* listaIO, int tamanho_lista, char* nome_sensor, int numero_
 void enviaJson(StateSensor estados) {
     cJSON* estados_json = buildJson(estados, info.porta_servidor_distribuido);
     char* mensagem = cJSON_Print(estados_json);
-    envia(info.ip_servidor_central, info.porta_servidor_central, mensagem);
+
+    int envio = envia(info.ip_servidor_central, info.porta_servidor_central, mensagem);
+    if (envio == -1) {
+        printf("Perdeu a conexão com o servidor central\n");
+        trata_sinal(envio);
+    }
 }
 
 int comparaEstados(StateSensor estado1, StateSensor estado2) {
@@ -165,11 +178,6 @@ void* obter_temp_umidade(void* args) {
 
 }
 
-void trata_sinal(int signum) {
-    pthread_cancel(thread_cliente);
-    pthread_cancel(thread_dht22);
-    exit(0);
-}
 
 
 int main(int argc, char** argv) {
