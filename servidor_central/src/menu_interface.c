@@ -1,7 +1,7 @@
 #include "menu_interface.h"
 
 char** andares;
-int qntd_andares, pessoas_predio, andar_atual;
+int qntd_andares, pessoas_predio, andar_atual, alarme;
 int* qntd_pessoas;
 JSONData* estados_sensores;
 
@@ -45,12 +45,12 @@ void apresenta_info() {
     if (estados_sensores[andar_atual].temp == 0) {
         attron(COLOR_PAIR(DEFAULT));
         mvprintw(row_init + 3, 0, "Carregando temperatura");
-        mvprintw(row_init + 4, 2, "umidade . . .");
+        mvprintw(row_init + 4, 6, "e umidade ...");
         attroff(COLOR_PAIR(DEFAULT));
     }
     else {
         mvprintw(row_init + 3, 0, "Umidade: %.1lf%%", estados_sensores[andar_atual].umidade);
-        mvprintw(row_init + 4, 0, "Temperatura: %.1lf", estados_sensores[andar_atual].temp);
+        mvprintw(row_init + 4, 0, "Temperatura: %.1lf°C", estados_sensores[andar_atual].temp);
     }
     attroff(COLOR_PAIR(BLUE));
 
@@ -90,7 +90,7 @@ void menu_comandos() {
     mvprintw(row_init + 2, column_ident, "[4] Ar Condicionado");
 
     if (strcmp(andares[andar_atual], "Térreo") == 0) {
-        seleciona_cor(obter_estado_alarme());
+        seleciona_cor(alarme);
         mvprintw(row_init + 3, column_ident, "[5] Alarme\n");
     }
 
@@ -112,7 +112,7 @@ void menu_comandos() {
 
 }
 
-void menu(JSONData* estados, char** _andares, int* qntds, int qntd_andar, int total_pessoas, int andar) {
+void menu(JSONData* estados, char** _andares, int* qntds, int qntd_andar, int total_pessoas, int andar, int alarme) {
     inicializa_cores();
     estados_sensores = estados;
     andares = _andares;
@@ -120,6 +120,7 @@ void menu(JSONData* estados, char** _andares, int* qntds, int qntd_andar, int to
     qntd_andares = qntd_andar;
     pessoas_predio = total_pessoas;
     andar_atual = andar;
+    alarme = alarme;
     apresenta_info_geral();
     apresenta_info();
     menu_comandos();

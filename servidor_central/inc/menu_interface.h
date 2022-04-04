@@ -16,6 +16,6 @@ void apresenta_info_geral();
 void seleciona_cor(int estado);
 void apresenta_info();
 void menu_comandos();
-void menu(JSONData* estados, char** _andares, int* qntds, int qntd_andar, int total_pessoas, int andar);
+void menu(JSONData* estados, char** _andares, int* qntds, int qntd_andar, int total_pessoas, int andar, int alarme);
 
 #endif
