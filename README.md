@@ -73,7 +73,7 @@ O servidor central irá esperar a conexão de ao menos 1 servidor distribuído. 
 
 Na imagem, é possível observar 4 seções apresentadas para o usuário, as quais são separadas por linha tracejada. 
 
-- A primeira seção: apresenta as informações gerais do prédio - número de pessos e o número de pessoas em cada andar. Além disso, de acordo com a interação do usuário, essa seção apresenta um status do sistema, sendo vermelho para erros e verde para solicitações aceitas (Ex. "Ligando lâmpada", "Desligando todos os sensores" etc.)
+- A primeira seção: apresenta as informações gerais do prédio - número de pessoas e o número de pessoas em cada andar. Além disso, de acordo com a interação do usuário, essa seção apresenta um status do sistema, sendo vermelho para erros e verde para solicitações aceitas (Ex. "Ligando lâmpada", "Desligando todos os sensores" etc.)
 
 - Segunda seção: apresenta as informações específicas do andar sendo observado - umidade e temperatura no andar e o estado dos sensores do andar.
     
