@@ -20,10 +20,11 @@ pthread_t t1, thread_menu;
 
 char** andares;
 int* qntd_pessoas;
-int terreo;
+int terreo = -1;
 int pessoas_predio = 0;
 int qntd_andares = 0;
 int andar_atual = 0;
+int alarme = 0;
 
 int liga_desliga(int estado) {
     if (estado == 1)
@@ -72,7 +73,7 @@ void trata_retorno(JSONMessage mensagem) {
         if (mensagem.comand == 1)
             mvprintw(0, 30, "ligando %s . . .", mensagem.sensor);
         else
-            mvprintw(0, 50, "desligando %s . . .", mensagem.sensor);
+            mvprintw(0, 30, "desligando %s . . .", mensagem.sensor);
 
         attroff(COLOR_PAIR(GREEN));
     }
@@ -81,28 +82,70 @@ void trata_retorno(JSONMessage mensagem) {
 void envia_mensagem(char* mensagem, unsigned short porta) {
     JSONMessage mensagem_json;
     char* mensgaem_retorno;
-    mensgaem_retorno = envia("192.168.0.38", estados_sensores[andar_atual].distribuido_porta, mensagem);
+    mensgaem_retorno = envia("192.168.0.38", porta, mensagem);
     mensagem_json = parseMessage(mensgaem_retorno);
     trata_retorno(mensagem_json);
 }
 
 void transmissao_predio(int comand) {
     char* message = buildMessage("todos", 1, comand);
-    for (int i = 0; i < qntd_andares; i++)
+    for (int i = 0; i < qntd_andares; i++) {
         envia_mensagem(message, estados_sensores[i].distribuido_porta);
+    }
 }
 
 void controla_aspersor() {
-    int estado_geral_fumaca = 0;
-    for (int i = 0; i < qntd_andares; i++) {
+    int estado_fumaca = 0;
+
+    for (int i = 0;i < qntd_andares; i++) {
         if (estados_sensores[i].fumaca) {
-            estado_geral_fumaca = 1;
+            estado_fumaca = 1;
             break;
         }
     }
-    char* mensagem;
-    mensagem = buildMessage("aspersor", 1, controla_alarme_fumaca(estado_geral_fumaca));
-    envia_mensagem(mensagem, estados_sensores[terreo].distribuido_porta);
+
+    if (terreo != -1) {
+        char* mensagem;
+        mensagem = buildMessage("aspersor", 1, controla_alarme_fumaca(estado_fumaca));
+        envia_mensagem(mensagem, estados_sensores[terreo].distribuido_porta);
+    }
+}
+
+void controla_alarme(JSONData estados) {
+    if (alarme) {
+        for (int i = 0;i < qntd_andares; i++) {
+            if (estados_sensores[i].janela01 || estados_sensores[i].janela02 || estados_sensores[i].presenca || estados_sensores[i].porta) {
+                controla_alarme_seguranca(LIGA);
+                return;
+            }
+        }
+
+        controla_alarme_seguranca(DESLIGA);
+    }
+}
+
+void altera_alarme() {
+    if (alarme) {
+        alarme = DESLIGA;
+        controla_alarme_seguranca(alarme);
+    }
+    else {
+        int cond = 1;
+        for (int i = 0; i < qntd_andares; i++) {
+            if (estados_sensores[i].janela01 || estados_sensores[i].janela02 || estados_sensores[i].porta == 1 || estados_sensores[i].presenca) {
+                cond = 0;
+                break;
+            }
+        }
+        if (cond)
+            alarme = LIGA;
+        else {
+            attron(COLOR_PAIR(RED));
+            mvprintw(0, 30, "Não foi possível acionar o alarme");
+            attroff(COLOR_PAIR(RED));
+
+        }
+    }
 }
 
 
@@ -158,8 +201,9 @@ void* servidor_escuta(void* args) {
                 soma += qntd_pessoas[i];
         }
         qntd_pessoas[terreo] = pessoas_predio - soma;
+        controla_aspersor(info.fumaca);
+        controla_alarme(info);
         atualiza_andar(info);
-        controla_aspersor();
     }
 
     finalizaEscuta();
@@ -187,7 +231,7 @@ void* aguarda_comando_usuario(void* args) {
             message = buildMessage("ar-condicionado", 1, liga_desliga(estados_sensores[andar_atual].ar_cond));
             break;
         case '5':
-            controla_alarme_seguranca(estados_sensores, qntd_andares);
+            altera_alarme();
             break;
 
         case 'q':
@@ -254,7 +298,7 @@ int main(void) {
 
     while (1) {
         clear();
-        menu(estados_sensores, andares, qntd_pessoas, qntd_andares, pessoas_predio, andar_atual);
+        menu(estados_sensores, andares, qntd_pessoas, qntd_andares, pessoas_predio, andar_atual, alarme);
         dispara();
         refresh();
         sleep(1);
