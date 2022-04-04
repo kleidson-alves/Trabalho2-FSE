@@ -39,8 +39,10 @@ int envia(char* IP_Servidor, unsigned short servidorPorta, char* mensagem) {
 
     totalBytesRecebidos = 0;
     while (totalBytesRecebidos < tamanhoMensagem) {
-        if ((bytesRecebidos = recv(clienteSocket, buffer, 300 - 1, 0)) <= 0)
+        if ((bytesRecebidos = recv(clienteSocket, buffer, 300 - 1, 0)) <= 0) {
             printf("Não recebeu o total de bytes enviados\n");
+            return -1;
+        }
         totalBytesRecebidos += bytesRecebidos;
         buffer[bytesRecebidos] = '\0';
     }

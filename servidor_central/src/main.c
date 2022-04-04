@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <time.h>
+
 
 #include "servidor_tcp.h"
 #include "cliente_tcp.h"
@@ -13,6 +15,8 @@
 #include "alarme.h"
 #include "menu_interface.h"
 
+#define ARQUIVO "entradas.csv"
+#define MAX_ANDAR 5
 
 cJSON* json;
 JSONData* estados_sensores;
@@ -26,11 +30,24 @@ int qntd_andares = 0;
 int andar_atual = 0;
 int alarme = 0;
 
-int liga_desliga(int estado) {
-    if (estado == 1)
-        return 0;
+void escreve_arquivo(char* comando) {
+    FILE* file;
+    struct tm* data_hora;
+    time_t segundos;
 
-    return 1;
+    time(&segundos);
+    data_hora = localtime(&segundos);
+
+    file = fopen(ARQUIVO, "a");
+
+    if (file == NULL)
+        return;
+
+    fprintf(file, "%d/%d/%d,", data_hora->tm_mday, data_hora->tm_mon + 1, data_hora->tm_year + 1900);
+    fprintf(file, "%d:%d:%d,", data_hora->tm_hour, data_hora->tm_min, data_hora->tm_sec);
+    fprintf(file, "%s\n", comando);
+
+    fclose(file);
 }
 
 int verifica_nova_conexao(JSONData json_data) {
@@ -70,11 +87,33 @@ void trata_retorno(JSONMessage mensagem) {
     }
     else {
         attron(COLOR_PAIR(GREEN));
-        if (mensagem.comand == 1)
-            mvprintw(0, 30, "ligando %s . . .", mensagem.sensor);
-        else
-            mvprintw(0, 30, "desligando %s . . .", mensagem.sensor);
+        char msg_arquivo[150];
+        char numero_sensor[5];
+        int eh_aspersor = strcmp(mensagem.sensor, "aspersor") == 0;
+        if (mensagem.comand == 1) {
+            if (!eh_aspersor)
+                mvprintw(0, 30, "ligando %s . . .", mensagem.sensor);
+            strcpy(msg_arquivo, "Liga ");
+        }
+        else {
+            if (!eh_aspersor)
+                mvprintw(0, 30, "desligando %s . . .", mensagem.sensor);
+            strcpy(msg_arquivo, "Desliga ");
+        }
+        strcat(msg_arquivo, mensagem.sensor);
+        if (mensagem.numero > 1) {
+            sprintf(numero_sensor, " %d", mensagem.numero);
+            strcat(msg_arquivo, numero_sensor);
+        }
+        if (eh_aspersor)
+            strcat(msg_arquivo, " e alarme de incêndio");
 
+        else {
+            strcat(msg_arquivo, " pelo ");
+            strcat(msg_arquivo, andares[andar_atual]);
+        }
+
+        escreve_arquivo(msg_arquivo);
         attroff(COLOR_PAIR(GREEN));
     }
 }
@@ -88,7 +127,7 @@ void envia_mensagem(char* mensagem, unsigned short porta) {
 }
 
 void transmissao_predio(int comand) {
-    char* message = buildMessage("todos", 1, comand);
+    char* message = buildMessage("todos do prédio", 1, comand);
     for (int i = 0; i < qntd_andares; i++) {
         envia_mensagem(message, estados_sensores[i].distribuido_porta);
     }
@@ -96,6 +135,7 @@ void transmissao_predio(int comand) {
 
 void controla_aspersor() {
     int estado_fumaca = 0;
+    int estado_anterior_fumaca = obter_estado_alarme(FUMACA);
 
     for (int i = 0;i < qntd_andares; i++) {
         if (estados_sensores[i].fumaca) {
@@ -104,30 +144,35 @@ void controla_aspersor() {
         }
     }
 
-    if (terreo != -1) {
+
+    if (estado_anterior_fumaca != estado_fumaca && terreo != -1) {
         char* mensagem;
-        mensagem = buildMessage("aspersor", 1, controla_alarme_fumaca(estado_fumaca));
+        int comando = controla_alarme_fumaca(estado_fumaca);
+        mensagem = buildMessage("aspersor", 1, comando);
         envia_mensagem(mensagem, estados_sensores[terreo].distribuido_porta);
     }
 }
 
 void controla_alarme(JSONData estados) {
+    int estado_anterior_alarme = obter_estado_alarme(SEGURANCA);
     if (alarme) {
         for (int i = 0;i < qntd_andares; i++) {
             if (estados_sensores[i].janela01 || estados_sensores[i].janela02 || estados_sensores[i].presenca || estados_sensores[i].porta) {
-                controla_alarme_seguranca(LIGA);
+                if (estado_anterior_alarme == 0) {
+                    escreve_arquivo("Dispara alarme de segurança");
+                    controla_alarme_seguranca(LIGA);
+                }
                 return;
             }
         }
-
-        controla_alarme_seguranca(DESLIGA);
     }
 }
 
 void altera_alarme() {
     if (alarme) {
         alarme = DESLIGA;
-        controla_alarme_seguranca(alarme);
+        controla_alarme_seguranca(DESLIGA);
+        escreve_arquivo("Desativa alarme de segurança");
     }
     else {
         int cond = 1;
@@ -137,8 +182,10 @@ void altera_alarme() {
                 break;
             }
         }
-        if (cond)
+        if (cond) {
             alarme = LIGA;
+            escreve_arquivo("Aciona alarme de segurança");
+        }
         else {
             attron(COLOR_PAIR(RED));
             mvprintw(0, 30, "Não foi possível acionar o alarme");
@@ -146,6 +193,12 @@ void altera_alarme() {
 
         }
     }
+}
+
+int liga_desliga(int estado) {
+    if (estado == 1)
+        return 0;
+    return 1;
 }
 
 
@@ -157,6 +210,10 @@ void* servidor_escuta(void* args) {
     int estado_anterior_saida = 0;
     int andar_json;
 
+    estados_sensores = malloc(MAX_ANDAR * sizeof(JSONData));
+    andares = malloc(MAX_ANDAR * sizeof(andares));
+    qntd_pessoas = malloc(MAX_ANDAR * sizeof(int));
+
     inicializaEscuta(porta);
 
     while (1) {
@@ -167,9 +224,6 @@ void* servidor_escuta(void* args) {
             char* nome_andar = getFloorName(json_nome);
             if (strcmp("Térreo", nome_andar) == 0)
                 terreo = qntd_andares;
-            estados_sensores = realloc(estados_sensores, (qntd_andares + 1) * sizeof(JSONData));
-            andares = realloc(andares, (qntd_andares + 1) * sizeof(andares));
-            qntd_pessoas = realloc(qntd_pessoas, (qntd_andares + 1) * sizeof(int));
 
             andares[qntd_andares] = nome_andar;
             qntd_pessoas[qntd_andares] = 0;
@@ -231,7 +285,8 @@ void* aguarda_comando_usuario(void* args) {
             message = buildMessage("ar-condicionado", 1, liga_desliga(estados_sensores[andar_atual].ar_cond));
             break;
         case '5':
-            altera_alarme();
+            if (andar_atual == terreo)
+                altera_alarme();
             break;
 
         case 'q':
@@ -239,11 +294,11 @@ void* aguarda_comando_usuario(void* args) {
             break;
 
         case 'l':
-            message = buildMessage("todos", 1, LIGA);
+            message = buildMessage("todos do andar", 1, LIGA);
             break;
 
         case 'd':
-            message = buildMessage("todos", 1, DESLIGA);
+            message = buildMessage("todos do andar", 1, DESLIGA);
             break;
         case 'o':
             transmissao_predio(LIGA);
@@ -265,12 +320,20 @@ void* aguarda_comando_usuario(void* args) {
         }
     }
 }
+void inicia_arquivo() {
+    FILE* file;
+    file = fopen(ARQUIVO, "w+");
+    fprintf(file, "Data, Hora, Evento\n");
+    fclose(file);
+}
 
 void trata_sinal(int sinal) {
-    endwin();
     encerraServidor();
+    free(estados_sensores);
+    free(andares);
     pthread_cancel(thread_menu);
     pthread_cancel(t1);
+    endwin();
     exit(0);
 }
 
@@ -281,6 +344,7 @@ int main(void) {
     int exit = 0;
 
     signal(SIGINT, trata_sinal);
+    inicia_arquivo();
 
     initscr();
     curs_set(0);
