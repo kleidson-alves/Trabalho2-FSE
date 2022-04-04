@@ -26,7 +26,9 @@ void controla_alarme_seguranca(int comando) {
     alarme_seguranca = comando;
 }
 
-int obter_estado_alarme() {
+int obter_estado_alarme(int tipo) {
+    if (tipo == FUMACA)
+        return alarme_fumaca;
     return alarme_seguranca;
 }
 
