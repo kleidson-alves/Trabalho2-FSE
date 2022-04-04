@@ -69,6 +69,36 @@ O servidor central irá esperar a conexão de ao menos 1 servidor distribuído. 
 
 
 
+![](./assets/principal.jpeg)
 
-![]("./assets/experimento1.png")
+Na imagem, é possível observar 4 seções apresentadas para o usuário, as quais são separadas por linha tracejada. 
 
+- A primeira seção: apresenta as informações gerais do prédio - número de pessos e o número de pessoas em cada andar. Além disso, de acordo com a interação do usuário, essa seção apresenta um status do sistema, sendo vermelho para erros e verde para solicitações aceitas (Ex. "Ligando lâmpada", "Desligando todos os sensores" etc.)
+
+- Segunda seção: apresenta as informações específicas do andar sendo observado - umidade e temperatura no andar e o estado dos sensores do andar.
+    
+    - Verde: sensor ativo
+    - Vermelhor: sensor desativado
+
+- Terceira seção: apresenta a lista de comandos de acionamento de sensores e seus respectivos estados. (Apenas o Térreo possui a opção de acionar o alarme de segurança)
+    
+    - Primeira seção com interação do usuário
+    - O menu corresponde a um número e o sensor associado a ele. 
+    - Se determinado sensor estiver vermelho e o usuário pressionar a tecla a ele associada, estará solcitando o acionamento do sensor. Caso esteja verde e o usuário pressione a tecla a ele associada, então estará solicitando o seu desligamento
+
+    - **Exemplo de Uso** - Lâmpada Sala 1 está vermelho. Usuário deseja ligá-la. Pressione então a tecla 1. Se não houver nenhum erro de comunicação com o servidor distribuído referente ao andar, a lâmpada será ligada e sua nova cor será verde
+
+- Quarta seção: Apresenta comandos especiais. 
+    
+    - Diferentemente da seção anterior, os comandos estão associados a letras específicas do teclado ("l", "d", "o", "i" e "q")
+    - Não estão associadas a um sensor específico
+    - Ao pressionar:
+        - l - irá ligar todos os sensores do andar sendo observado
+        - d - irá desligar todos os sensores do andar sendo observado
+        - o - irá ligar todos as cargas do prédio
+        - i - irá desligar todas as cargas do prédio
+        - q - irá encerrar a conexão do servidor central e finalizar o programa 
+
+<br>
+
+- *Para alterar de andar a ser observado, pressione espaço*
